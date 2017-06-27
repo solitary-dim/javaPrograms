@@ -16,15 +16,24 @@ public class LoginPanel implements Serializable {
 
     private static final int LINE_SPACING = 10;
 
-    protected final JPanel jPanel = new JPanel();
+    private final JPanel jPanel = new JPanel();
 
     private JLabel title;
     private JLabel loginName;
     private JLabel password;
     private JTextField name;
     private JTextField pwd;
-    private JButton login;
-    private JButton reset;
+
+    public JButton loginBtn;
+    public JButton resetBtn;
+
+    public JTextField getPwd() {
+        return pwd;
+    }
+
+    public JTextField getName() {
+        return name;
+    }
 
     protected JPanel loginPanel(int width, int height) {
         jPanel.setSize(width, height);
@@ -34,18 +43,11 @@ public class LoginPanel implements Serializable {
         password = new JLabel("Password");
         name = new JTextField(16);
         pwd = new JTextField(16);
-        login = new JButton("Login");
+        loginBtn = new JButton("Login");
 
-        login.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println(name.getText() + "||" + pwd.getText());
-            }
-        });
+        resetBtn = new JButton("Reset");
 
-        reset = new JButton("Reset");
-
-        reset.addActionListener(new ActionListener() {
+        resetBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 name.setText(null);
@@ -74,8 +76,8 @@ public class LoginPanel implements Serializable {
                                 addComponent(pwd, GroupLayout.Alignment.BASELINE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)).
                         addGap(LINE_SPACING).
                         addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE).
-                                        addComponent(login, GroupLayout.Alignment.BASELINE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE).
-                                        addComponent(reset, GroupLayout.Alignment.BASELINE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+                                        addComponent(loginBtn, GroupLayout.Alignment.BASELINE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE).
+                                        addComponent(resetBtn, GroupLayout.Alignment.BASELINE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
                         )
         );
         //创建GroupLayout的水平连续组，，越先加入的ParallelGroup，优先级级别越高。
@@ -96,8 +98,8 @@ public class LoginPanel implements Serializable {
                                                         addComponent(pwd, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
                                         ).
                                         addGroup(GroupLayout.Alignment.LEADING, layout.createSequentialGroup().
-                                                        addComponent(login).
-                                                        addComponent(reset)
+                                                        addComponent(loginBtn).
+                                                        addComponent(resetBtn)
                                         )
                         )
         );
@@ -106,8 +108,8 @@ public class LoginPanel implements Serializable {
         jPanel.add(name);
         jPanel.add(password);
         jPanel.add(pwd);
-        jPanel.add(login);
-        jPanel.add(reset);
+        jPanel.add(loginBtn);
+        jPanel.add(resetBtn);
 
         return jPanel;
     }
