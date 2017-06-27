@@ -10,8 +10,11 @@ import javax.swing.*;
  */
 public final class MainWin {
 
+    private static final int WIDTH = 500;
+    private static final int HEIGHT = 500;
+
     public static void main(String[] args) {
-        JPanel jPanel = new LoginPanel().loginPanel();
+        JPanel jPanel = new LoginPanel().loginPanel(WIDTH, HEIGHT);
         MainWin win = new MainWin();
         win.init(jPanel);
     }
@@ -20,7 +23,7 @@ public final class MainWin {
         JFrame mainWin = new JFrame("Login");
         mainWin.add(jPanel);
         mainWin.setVisible(true);
-        mainWin.setSize(500, 500);
+        mainWin.setSize(WIDTH, HEIGHT);
         mainWin.setLocationRelativeTo(null);
         mainWin.setResizable(false);
         mainWin.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);

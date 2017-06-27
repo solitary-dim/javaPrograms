@@ -14,6 +14,9 @@ import java.io.File;
  */
 public class MainFrame {
 
+    private static final int WIDTH = 500;
+    private static final int HEIGHT = 500;
+
     public static void main(String[] args) {
         JFrame jf = new JFrame();
 
@@ -64,7 +67,7 @@ public class MainFrame {
         jf.add(jPanel);
         jf.setTitle("test");
         jf.setVisible(true);
-        jf.setSize(500, 500);
+        jf.setSize(WIDTH, HEIGHT);
         jf.setLocationRelativeTo(null);
         jf.setResizable(false);
         jf.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
