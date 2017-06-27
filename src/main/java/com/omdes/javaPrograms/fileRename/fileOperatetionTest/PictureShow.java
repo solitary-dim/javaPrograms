@@ -1,4 +1,4 @@
-package com.omdes.javaPrograms.fileRename;
+package com.omdes.javaPrograms.fileRename.fileOperatetionTest;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
