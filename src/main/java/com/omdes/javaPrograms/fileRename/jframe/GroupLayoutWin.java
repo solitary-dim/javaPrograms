@@ -49,7 +49,23 @@ public class GroupLayoutWin extends JFrame implements ActionListener, Serializab
         name = new JTextField(16);
         pwd = new JTextField(16);
         login = new JButton("Login");
+
+        login.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                System.out.println(name.getText() + "||" + pwd.getText());
+            }
+        });
+
         reset = new JButton("Reset");
+
+        reset.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                name.setText(null);
+                pwd.setText(null);
+            }
+        });
 
         GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
