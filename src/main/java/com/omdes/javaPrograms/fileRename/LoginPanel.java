@@ -35,7 +35,7 @@ public class LoginPanel implements Serializable {
         return name;
     }
 
-    protected JPanel loginPanel(int width, int height) {
+    protected JPanel createPanel(int width, int height) {
         jPanel.setSize(width, height);
 
         title = new JLabel("Input your account and password!");
