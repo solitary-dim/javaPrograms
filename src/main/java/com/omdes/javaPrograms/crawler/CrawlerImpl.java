@@ -1,17 +1,22 @@
 package com.omdes.javaPrograms.crawler;
 
+import org.apache.commons.lang.StringUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static com.omdes.javaPrograms.crawler.Config.LEFT_SLASH;
+import static com.omdes.javaPrograms.crawler.Config.HTTP;
 
 /**
  * Created with IntelliJ IDEA.
@@ -54,21 +59,75 @@ public class CrawlerImpl {
     private static final Logger LOGGER = LoggerFactory.getLogger(CrawlerImpl.class);
 
     private static Set<String> visitedUrl = new HashSet<>();
+    private static Set<String> aUrl = new HashSet<>();
+    private static Set<String> imgUrl = new HashSet<>();
 
     public void crawlerFromUrl(String url) {
-        //this.setUrl(url);
         HttpClient httpClient = new HttpClient(url, 300*1000, 300*1000);
 
+        String htmlBody = "";
         try {
-            LOGGER.info("test 0");
             httpClient.sendData("GET", null);
-            LOGGER.info(httpClient.getResult());
+            htmlBody = httpClient.getResult();
+            LOGGER.info(htmlBody);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("error!", e);
+        }
+
+        Document doc = Jsoup.parse(htmlBody);
+
+        getALink(doc);
+        for (String link: aUrl) {
+            LOGGER.info(link);
+        }
+
+        getImgLink(doc);
+        for (String link: imgUrl) {
+            LOGGER.info(link);
         }
 
 
-        //LOGGER.info(baidu(url));
+        //this.setUrl(url);
+    }
+
+    /**
+     * 拿取所有a标签的href
+     * @param doc
+     */
+    private void getALink(Document doc) {
+        Elements elements = doc.select("a[href]");
+        for (Element element:elements) {
+            String link = element.attr("abs:href").trim();
+            if (StringUtils.isNotEmpty(link)) {
+                if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
+                    link = link.substring(0, link.length() - 1);
+                }
+                aUrl.add(link);
+            }
+        }
+    }
+
+    /**
+     * 拿取所有img标签的src
+     * @param doc
+     */
+    private void getImgLink(Document doc) {
+        Elements elements = doc.getElementsByTag("img");
+        for (Element element : elements) {
+            String link = element.attr("src").trim();
+            if (StringUtils.isNotEmpty(link)) {
+                if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
+                    link = link.substring(0, link.length() - 1);
+                }
+                if (!link.contains(HTTP)) {
+                    link = HTTP + link;
+                }
+                imgUrl.add(link);
+            }
+        }
+
+        //download test
+        //new ImageDownload().imageDownload(imgUrl);
     }
 
     private void setUrl(String url) {
@@ -154,44 +213,5 @@ public class CrawlerImpl {
                 }
             }
         }
-    }
-
-    private String baidu(String u) {
-        LOGGER.info("send request to baidu");
-
-        //设置系统变量
-        System.setProperty("http.proxySet", "true");
-        System.setProperty("http.proxyHost", Config.PROXY_HOST);
-        System.setProperty("http.proxyPort", "" + Config.PROXY_PORT);
-        // 针对https也开启代理
-        System.setProperty("https.proxyHost", Config.PROXY_HOST);
-        System.setProperty("https.proxyPort", "" + Config.PROXY_PORT);
-
-        StringBuilder content = new StringBuilder();
-        //开始请求
-        try {
-            URL url = new URL(u);
-            URLConnection conn = url.openConnection();
-            HttpURLConnection httpCon = (HttpURLConnection) conn;
-            httpCon.setFollowRedirects(true);
-            httpCon.setRequestMethod("GET");
-
-            BufferedReader input = new BufferedReader(new InputStreamReader(httpCon.getInputStream(), Config.ENCODING));
-            String line;
-            while ((line = input.readLine()) != null) {
-                content.append(line).append("\n");
-            }
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("UnsupportedEncodingException!" , e);
-        } catch (ProtocolException e) {
-            LOGGER.error("ProtocolException!", e);
-        } catch (MalformedURLException e) {
-            LOGGER.error("MalformedURLException!", e);
-        } catch (IOException e) {
-            LOGGER.error("IOException!", e);
-        }
-        LOGGER.info("==============End==================");
-
-        return content.toString();
     }
 }
