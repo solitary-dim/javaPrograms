@@ -1,5 +1,8 @@
 package com.omdes.javaPrograms.crawler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -48,14 +51,15 @@ import java.util.Set;
  *
  */
 public final class Main {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
     private static Set<String> urlSet = new HashSet<>();
     private static Set<String> visitedUrl = new HashSet<>();
-    private static Set<String> unVisitedUrl = new HashSet<>();
 
     private static Integer deep = 0;
 
     public static void main(String[] args) {
-        new CrawlerImpl().crawlerFromUrl("http://www.baidu.com");
+        new CrawlerPages().crawlerFromUrl("http://www.baidu.com");
 
         /*final List<String> list = new ArrayList<>();
         list.add(url);
@@ -80,36 +84,35 @@ public final class Main {
                 result.append(line);
             }
         } catch (MalformedURLException e) {
-            System.out.println("发送GET请求出现异常！"+ e);
+            LOGGER.error("发送GET请求出现异常！", e);
         } catch (IOException e) {
-            System.out.println("IOException!"+ e);
+            LOGGER.error("IOException!", e);
         } finally {
             try {
                 if (null != input) {
                     input.close();
                 }
             } catch (IOException e) {
-                System.out.println("IOException!"+ e);
+                LOGGER.error("IOException!", e);
             }
         }
         visitedUrl.add(url);
-        String body = result.toString();
+        /*String body = result.toString();
         body = body.replace(">&nbsp; <", "><");
         body = body.replace("> <", "><");
         body = body.replace("><", ">\r\n<");
         // ouput html body content
-        //LOGGER.info(body);
+        LOGGER.info(body);*/
         String[] str = result.toString().split("href=");
-        System.out.println("========================================" + deep + "=======================================");
+        LOGGER.info("========================================" + deep + "=======================================");
         for (String s: str) {
             if (s.contains(">")) {
                 s = s.substring(0, s.indexOf(">"));
             }
-            if (s.contains("http://") && s.indexOf("\"") != 0 &&
-                    !s.contains("javascript:void(0)") && !s.contains("<!DOCTYPE") &&
-                    s.lastIndexOf(".css") != (s.length() -4)) {
+            if (s.contains("http://") && s.indexOf("\"") != 0 && !s.contains("<!DOCTYPE") &&
+                    !s.contains("javascript:void(0)") && s.lastIndexOf(".css") != (s.length() - 4)) {
                 s = s.trim();
-                System.out.println(s);
+                LOGGER.info(s);
                 String tempUrl;
                 if (s.contains(" ")) {
                     tempUrl = s.substring(0, s.indexOf(" "));
@@ -117,20 +120,17 @@ public final class Main {
                     tempUrl = s;
                 }
                 tempUrl = tempUrl.replace("\"", "").replace("\'", "");
-                if (!tempUrl.isEmpty()) {
+                if (!tempUrl.isEmpty() && !tempUrl.contains(" ")) {
                     urlSet.add(tempUrl);
                 }
             }
         }
-        System.out.println("----------------------------------------" + deep + "--------------------------------------------");
-        /*for (String s: urlSet) {
-            LOGGER.info(s);
-        }*/
+        LOGGER.info("----------------------------------------" + deep + "--------------------------------------------");
         if (!urlSet.isEmpty()) {
             for (String s: urlSet) {
                 if (!visitedUrl.contains(s)) {
                     list.add(s);
-                    System.out.println(s);
+                    LOGGER.info(s);
                     getUrl(s, list);
                     //deep--;
                 }

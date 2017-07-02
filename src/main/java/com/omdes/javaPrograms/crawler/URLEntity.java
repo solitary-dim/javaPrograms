@@ -41,7 +41,8 @@ import java.util.List;
  *          不见满街漂亮妹，哪个归得程序员？
  *
  */
-public class URLEntity implements Serializable {
+public final class URLEntity implements Serializable {
+    private static final long serialVersionUID = -277049889226862766L;
 
     private Long id;
     private String name;

@@ -1,22 +1,16 @@
 package com.omdes.javaPrograms.crawler;
 
-import org.apache.commons.lang.StringUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import static com.omdes.javaPrograms.crawler.Config.LEFT_SLASH;
-import static com.omdes.javaPrograms.crawler.Config.HTTP;
 
 /**
  * Created with IntelliJ IDEA.
@@ -53,81 +47,22 @@ import static com.omdes.javaPrograms.crawler.Config.HTTP;
  *          奔驰宝马贵者趣，公交自行程序员。
  *          别人笑我忒疯癫，我笑自己命太贱；
  *          不见满街漂亮妹，哪个归得程序员？
- *
  */
-public class CrawlerImpl {
+public final class CrawlerImpl {
     private static final Logger LOGGER = LoggerFactory.getLogger(CrawlerImpl.class);
 
     private static Set<String> visitedUrl = new HashSet<>();
-    private static Set<String> aUrl = new HashSet<>();
-    private static Set<String> imgUrl = new HashSet<>();
 
     public void crawlerFromUrl(String url) {
+        //this.setUrl(url);
         HttpClient httpClient = new HttpClient(url, 300*1000, 300*1000);
 
-        String htmlBody = "";
         try {
             httpClient.sendData("GET", null);
-            htmlBody = httpClient.getResult();
-            LOGGER.info(htmlBody);
+            LOGGER.info(httpClient.getResult());
         } catch (IOException e) {
             LOGGER.error("error!", e);
         }
-
-        Document doc = Jsoup.parse(htmlBody);
-
-        getALink(doc);
-        for (String link: aUrl) {
-            LOGGER.info(link);
-        }
-
-        getImgLink(doc);
-        for (String link: imgUrl) {
-            LOGGER.info(link);
-        }
-
-
-        //this.setUrl(url);
-    }
-
-    /**
-     * 拿取所有a标签的href
-     * @param doc
-     */
-    private void getALink(Document doc) {
-        Elements elements = doc.select("a[href]");
-        for (Element element:elements) {
-            String link = element.attr("abs:href").trim();
-            if (StringUtils.isNotEmpty(link)) {
-                if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
-                    link = link.substring(0, link.length() - 1);
-                }
-                aUrl.add(link);
-            }
-        }
-    }
-
-    /**
-     * 拿取所有img标签的src
-     * @param doc
-     */
-    private void getImgLink(Document doc) {
-        Elements elements = doc.getElementsByTag("img");
-        for (Element element : elements) {
-            String link = element.attr("src").trim();
-            if (StringUtils.isNotEmpty(link)) {
-                if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
-                    link = link.substring(0, link.length() - 1);
-                }
-                if (!link.contains(HTTP)) {
-                    link = HTTP + link;
-                }
-                imgUrl.add(link);
-            }
-        }
-
-        //download test
-        //new ImageDownload().imageDownload(imgUrl);
     }
 
     private void setUrl(String url) {
