@@ -59,8 +59,8 @@ public final class URLEntity implements Serializable {
 
     private Long level;
     private String url;
-    private int isUsed;
-    private int count;
+    private int isUsed = 0;
+    private int count = 0;
     private String content;
     private String notes;
     private List<URLEntity> children;

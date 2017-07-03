@@ -47,6 +47,7 @@ public final class HttpClient {
      * @param readTimeOut      读取超时时间
      */
     public HttpClient(String url, int connectedTimeOut, int readTimeOut) {
+        LOGGER.info("page url: " + url);
         try {
             this.url = new URL(url);
             this.connectedTimeOut = connectedTimeOut;
