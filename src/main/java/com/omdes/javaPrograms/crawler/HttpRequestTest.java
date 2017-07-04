@@ -18,16 +18,18 @@ import java.net.*;
 public final class HttpRequestTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpRequestTest.class);
 
+    private static PropertiesConfig config = PropertiesConfig.getInstance();
+
     public static void main(String[] args) {
         LOGGER.info("send request to baidu");
 
         //设置系统变量
         System.setProperty("http.proxySet", "true");
-        System.setProperty("http.proxyHost", Config.PROXY_HOST);
-        System.setProperty("http.proxyPort", "" + Config.PROXY_PORT);
+        System.setProperty("http.proxyHost", config.getProxyHost());
+        System.setProperty("http.proxyPort", "" + config.getProxyPort());
         // 针对https也开启代理
-        System.setProperty("https.proxyHost", Config.PROXY_HOST);
-        System.setProperty("https.proxyPort", "" + Config.PROXY_PORT);
+        System.setProperty("https.proxyHost", config.getProxyHost());
+        System.setProperty("https.proxyPort", "" + config.getProxyPort());
 
         StringBuilder content = new StringBuilder();
         //开始请求
@@ -38,7 +40,7 @@ public final class HttpRequestTest {
             httpCon.setFollowRedirects(true);
             httpCon.setRequestMethod("GET");
 
-            BufferedReader input = new BufferedReader(new InputStreamReader(httpCon.getInputStream(), Config.ENCODING));
+            BufferedReader input = new BufferedReader(new InputStreamReader(httpCon.getInputStream(), BaseConfig.ENCODING));
             String line;
             while ((line = input.readLine()) != null) {
                 content.append(line).append("\n");

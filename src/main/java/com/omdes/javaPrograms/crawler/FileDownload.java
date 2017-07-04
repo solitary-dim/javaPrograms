@@ -12,8 +12,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Set;
 
-import static com.omdes.javaPrograms.crawler.Config.IMAGE_PATH;
-import static com.omdes.javaPrograms.crawler.Config.LEFT_SLASH;
+import static com.omdes.javaPrograms.crawler.BaseConfig.LEFT_SLASH;
 
 /**
  * Created with IntelliJ IDEA.
@@ -24,6 +23,8 @@ import static com.omdes.javaPrograms.crawler.Config.LEFT_SLASH;
 public final class FileDownload {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileDownload.class);
 
+    private PropertiesConfig config = PropertiesConfig.getInstance();
+
     public void imageDownload(Set<String> links) {
         for (String link: links) {
             try {
@@ -32,7 +33,7 @@ public final class FileDownload {
                 InputStream inStream = conn.getInputStream();
                 String fileName = link.substring(link.lastIndexOf(LEFT_SLASH));
                 LOGGER.info("file name: " + fileName);
-                FileOutputStream fs = new FileOutputStream(IMAGE_PATH + fileName);
+                FileOutputStream fs = new FileOutputStream(config.getImagePath() + fileName);
 
                 int byteread;
                 byte[] buffer = new byte[1204];

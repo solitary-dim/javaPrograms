@@ -1,8 +1,8 @@
 package com.omdes.javaPrograms.crawler;
 
 import java.sql.*;
-
-import static com.omdes.javaPrograms.crawler.Config.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -36,7 +36,11 @@ public final class MySQLHelper {
 
     private MySQLHelper() {}
 
+    private static PropertiesConfig config;
+
     public static MySQLHelper getInstance() {
+        config = PropertiesConfig.getInstance();
+
         if (mySQLHelper == null) {
             synchronized (MySQLHelper.class) {
                 if (mySQLHelper == null)        {
@@ -53,13 +57,15 @@ public final class MySQLHelper {
         if (null == this.connection) {
             try {
                 //加载MySql的驱动类
-                Class.forName(DRIVER_NAME);
+                Class.forName(config.getMysqlDriverName());
             } catch (ClassNotFoundException e) {
                 System.out.println("找不到驱动程序类 ，加载驱动失败！");
                 e.printStackTrace();
             }
             try {
-                this.connection = DriverManager.getConnection(SQL_URL, SQL_USER, SQL_PASSWORD);
+                this.connection = DriverManager.getConnection(config.getMysqlUrl(),
+                        config.getMysqlUsername(),
+                        config.getMysqlPassword());
             } catch (SQLException e) {
                 System.out.println("数据库连接失败！");
                 e.printStackTrace();
@@ -99,15 +105,40 @@ public final class MySQLHelper {
         }
     }
 
-    public long getIdStart() {
+    /**
+     * 判断当前表是否为空
+     * @param tableName 表名
+     * @return true-空；false-非空
+     */
+    private boolean isEmpty(String tableName) {
+        boolean result = true;
+        this.openConnection();
+        try {
+            this.statement = this.connection.createStatement();
+            this.resultSet = this.statement.executeQuery("SELECT COUNT(1) FROM " + tableName + ";");
+            if (this.resultSet.next() && this.resultSet.getInt(1) > 0) {
+                result = false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    /**
+     * 得到当前表中已有数据的最大ID
+     * @param tableName 表名
+     * @return long 表中已有最大ID
+     */
+    public long getIdStart(String tableName) {
         long id = 0L;
 
         //判断数据库中是否已经存在了数据
-        if (!isEmpty()) {
+        if (!isEmpty(tableName)) {
             this.openConnection();
             try {
                 this.statement = this.connection.createStatement();
-                this.resultSet = this.statement.executeQuery("SELECT MAX(ID) FROM T_URL;");
+                this.resultSet = this.statement.executeQuery("SELECT MAX(ID) FROM "+ tableName + ";");
                 if (this.resultSet.next()) {
                     id = this.resultSet.getLong(1);
                 }
@@ -119,19 +150,36 @@ public final class MySQLHelper {
         return id;
     }
 
-    private boolean isEmpty() {
-        boolean result = true;
-        this.openConnection();
-        try {
-            this.statement = this.connection.createStatement();
-            this.resultSet = this.statement.executeQuery("SELECT COUNT(1) FROM T_URL;");
-            if (this.resultSet.next() && this.resultSet.getInt(1) > 0) {
-                result = false;
+    public List<URLEntity> getUnvisitedUrl(String tableName) {
+        List<URLEntity> list = new ArrayList<>();
+        //判断数据库中是否已经存在了数据
+        if (!isEmpty(tableName)) {
+            this.openConnection();
+            try {
+                this.statement = this.connection.createStatement();
+                this.resultSet = this.statement.executeQuery("SELECT * FROM "+ tableName + " WHERE DELETED_FLAG = 0 AND IS_USED = 0 AND LEVEL > 0;");
+                while (this.resultSet.next()) {
+                    URLEntity entity = new URLEntity();
+                    entity.setId(resultSet.getLong(1));
+                    entity.setName(resultSet.getString(2));
+                    entity.setStatus(resultSet.getInt(3));
+                    entity.setDeletedFlag(resultSet.getInt(4));
+                    entity.setCreatedTime(resultSet.getTimestamp(5));
+                    entity.setCreatedUserId(resultSet.getLong(6));
+                    entity.setUpdatedTime(resultSet.getTimestamp(7));
+                    entity.setUpdatedUserId(resultSet.getLong(8));
+                    entity.setLevel(resultSet.getLong(9));
+                    entity.setUrl(resultSet.getString(10));
+                    entity.setIsUsed(resultSet.getInt(11));
+                    entity.setCount(resultSet.getInt(12));
+                    entity.setContent(resultSet.getString(13));
+                    entity.setNotes(resultSet.getString(14));
+                    list.add(entity);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-        return result;
+        return list;
     }
-
 }

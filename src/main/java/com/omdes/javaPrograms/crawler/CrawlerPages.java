@@ -9,13 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
-import static com.omdes.javaPrograms.crawler.Config.*;
+import static com.omdes.javaPrograms.crawler.BaseConfig.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -31,14 +29,20 @@ public final class CrawlerPages {
     private static Set<String> imgUnvisitedUrl = new HashSet<>();
     private static Set<String> imgVisitedUrl = new HashSet<>();
 
+    private static List<URLEntity> list = new ArrayList<>();
     private static int index = 0;
     private static long id = 1L;
 
+    private PropertiesConfig config = PropertiesConfig.getInstance();
+
     private MySQLHelper mySQLHelper;
     private static long startId;
+    /**
+     * 主方法
+     */
     public void crawlerFromUrl(String url) {
         mySQLHelper = MySQLHelper.getInstance();
-        startId = mySQLHelper.getIdStart();
+        startId = mySQLHelper.getIdStart(config.getMysqlTableName());
         this.setUrl(url);
     }
 
@@ -86,11 +90,9 @@ public final class CrawlerPages {
                 }
             }
         }
-
-        //download test
-        //new ImageDownload().imageDownload(imgUrl);
     }
 
+    //将开始url保存到实体类中,并开起爬虫
     private void setUrl(String url) {
         //将开始的url加入到未访问url中
         aUnvisitedUrl.add(url);
@@ -100,12 +102,13 @@ public final class CrawlerPages {
         entity.setUrl(url);
         entity.setIsUsed(0);
         entity.setNotes("Page");
-        getUrl(entity);
+        doCrawler(entity);
     }
 
-    private void getUrl(URLEntity entity) {
+    //开始爬虫
+    private void doCrawler(URLEntity entity) {
+        //标注本次访问的url为已访问
         entity.setIsUsed(1);
-        saveUrl(entity);
 
         Long level = entity.getLevel() + 1L;
         List<URLEntity> list = new ArrayList<>();
@@ -114,7 +117,7 @@ public final class CrawlerPages {
         aVisitedUrl.add(entity.getUrl());
         //将本次访问url从未访问过url中移出
         aUnvisitedUrl.remove(entity.getUrl());
-        HttpClient httpClient = new HttpClient(entity.getUrl(), TIME_OUT, TIME_OUT);
+        HttpClient httpClient = new HttpClient(entity.getUrl(), config.getTimeout(), config.getTimeout());
 
         String htmlBody = "";
         try {
@@ -124,11 +127,18 @@ public final class CrawlerPages {
         } catch (IOException e) {
             LOGGER.error("error!", e);
         }
+        //将通过本次url访问所得页面内容记录下
+        if (StringUtils.isNotEmpty(htmlBody)) {
+            entity.setContent(htmlBody);
+        }
+        saveUrlTemp(entity);
 
         Document doc = Jsoup.parse(htmlBody);
 
         //将本次url指向的页面中图片的url保存下来
         getImgLink(doc);
+        //download pictures from internet
+        new ImageDownload().imageDownload(imgUnvisitedUrl);
         for (String link : imgUnvisitedUrl) {
             //LOGGER.info("image url: " + link);
 
@@ -139,11 +149,11 @@ public final class CrawlerPages {
             imgEntity.setUrl(link);
             imgEntity.setIsUsed(1);
             imgEntity.setNotes("Image");
-            saveUrl(imgEntity);
+            saveUrlTemp(imgEntity);
 
-            //假设此处为图片下载
+            //将已经下载过的图片src转入已使用过set
             imgVisitedUrl.add(link);
-            //imgUnvisitedUrl.remove(link);
+            //imgUnvisitedUrl.remove(link);会报错语句，删除注释可以重新报错
         }
         //移除已经访问过的图片src
         for (String link: imgVisitedUrl) {
@@ -167,55 +177,58 @@ public final class CrawlerPages {
             list.add(urlEntity);
 
             //递归，根据新url去爬下一层的新的页面
-            getUrl(urlEntity);
+            doCrawler(urlEntity);
         }
     }
 
-    static List<URLEntity> list = new ArrayList<>();
-    public void saveUrl(URLEntity urlEntity) {
+    //将数据批量存储数据库前的预处理
+    private void saveUrlTemp(URLEntity urlEntity) {
+        list.add(urlEntity);
+        index++;
+        if (index >= config.getMysqlBatchMax()) {
+            saveUrl(list);
+
+            index = 0;
+            list.removeAll(list);
+            LOGGER.info("save data into MySQL");
+        }
+    }
+
+    //连接数据库，将数据批量存入数据库
+    private void saveUrl(List<URLEntity> list) {
         String sql = "INSERT INTO T_URL (ID, NAME, STATUS, DELETED_FLAG, CREATED_TIME, " +
                 "CREATED_USER_ID, UPDATED_TIME, UPDATED_USER_ID, LEVEL, URL, IS_USED, " +
                 "COUNT, CONTENT, NOTES) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-        list.add(urlEntity);
-        index++;
-        if (index >= BATCH_MAX) {
-            try {
-                mySQLHelper.openConnection();
-                Connection connection = mySQLHelper.getConnection();
-                PreparedStatement pstmt = connection.prepareStatement(sql);
-                connection.setAutoCommit(false);
-                for (URLEntity entity: list) {
-                    long currentTime = System.currentTimeMillis();
-                    pstmt.setLong(1, entity.getId());
-                    pstmt.setString(2, "");
-                    pstmt.setInt(3, entity.getStatus());
-                    pstmt.setInt(4, entity.getDeletedFlag());
-                    pstmt.setDate(5, new Date(currentTime));
-                    //pstmt.setLong(6, entity.getCreatedUserId());
-                    pstmt.setLong(6, 0L);
-                    pstmt.setDate(7, new Date(currentTime));
-                    //pstmt.setLong(8, entity.getUpdatedUserId());
-                    pstmt.setLong(8, 0L);
-                    pstmt.setLong(9, entity.getLevel());
-                    pstmt.setString(10, entity.getUrl());
-                    pstmt.setInt(11, entity.getIsUsed());
-                    pstmt.setInt(12, entity.getCount());
-                    pstmt.setString(13, entity.getContent());
-                    pstmt.setString(14, entity.getNotes());
-                    pstmt.addBatch();
-                }
-                pstmt.executeBatch();
-                connection.commit();
-
-                pstmt.close();
-                connection.close();
-            } catch (SQLException e) {
-                LOGGER.error("SQLException!", e);
+        try {
+            mySQLHelper.openConnection();
+            Connection connection = mySQLHelper.getConnection();
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            connection.setAutoCommit(false);
+            for (URLEntity entity: list) {
+                Date date = new Date();
+                pstmt.setLong(1, entity.getId());
+                pstmt.setString(2, "");
+                pstmt.setInt(3, entity.getStatus());
+                pstmt.setInt(4, entity.getDeletedFlag());
+                pstmt.setTimestamp(5, new Timestamp(date.getTime()));
+                //pstmt.setLong(6, entity.getCreatedUserId());
+                pstmt.setLong(6, 0L);
+                pstmt.setTimestamp(7, new Timestamp(date.getTime()));
+                //pstmt.setLong(8, entity.getUpdatedUserId());
+                pstmt.setLong(8, 0L);
+                pstmt.setLong(9, entity.getLevel());
+                pstmt.setString(10, entity.getUrl());
+                pstmt.setInt(11, entity.getIsUsed());
+                pstmt.setInt(12, entity.getCount());
+                pstmt.setString(13, entity.getContent());
+                pstmt.setString(14, entity.getNotes());
+                pstmt.addBatch();
             }
-            index = 0;
-            list.removeAll(list);
-            LOGGER.info("save data into MySQL");
+            pstmt.executeBatch();
+            connection.commit();
+        } catch (SQLException e) {
+            LOGGER.error("SQLException!", e);
         }
     }
 }

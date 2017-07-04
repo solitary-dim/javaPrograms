@@ -46,7 +46,7 @@ public final class URLEntity implements Serializable {
 
     private Long id;
     private String name;
-    //状态： 通常用 1/0 表示其是否有效
+    //状态： 0-表示无效，1-表示有效
     private int status = 1;
     //删除标记：逻辑删除用， 0-表示未删除， 1-表示已删除
     private int deletedFlag = 0;
@@ -60,7 +60,7 @@ public final class URLEntity implements Serializable {
     private Long level;
     private String url;
     private int isUsed = 0;
-    private int count = 0;
+    private int count = 1;
     private String content;
     private String notes;
     private List<URLEntity> children;

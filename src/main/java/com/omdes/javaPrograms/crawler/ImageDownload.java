@@ -12,8 +12,9 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Set;
 
-import static com.omdes.javaPrograms.crawler.Config.LEFT_SLASH;
-import static com.omdes.javaPrograms.crawler.Config.IMAGE_PATH;
+import static com.omdes.javaPrograms.crawler.BaseConfig.LEFT_SLASH;
+import static com.omdes.javaPrograms.crawler.BaseConfig.QUESTION_MARK_CHAR;
+import static com.omdes.javaPrograms.crawler.BaseConfig.QUESTION_MARK_STRING;
 
 /**
  * Created with IntelliJ IDEA.
@@ -24,15 +25,24 @@ import static com.omdes.javaPrograms.crawler.Config.IMAGE_PATH;
 public final class ImageDownload {
     private static final Logger LOGGER = LoggerFactory.getLogger(ImageDownload.class);
 
+    private PropertiesConfig config = PropertiesConfig.getInstance();
+
+    //根据src将图片保存到本地
     public void imageDownload(Set<String> links) {
         for (String link: links) {
+            LOGGER.info("img src: " + link);
             try {
+                //去除问号及后面内容
+                if (link.contains(QUESTION_MARK_STRING)) {
+                    link = link.substring(0, link.indexOf(QUESTION_MARK_CHAR));
+                }
+
                 URL url = new URL(link);
                 URLConnection conn = url.openConnection();
                 InputStream inStream = conn.getInputStream();
                 String imgName = link.substring(link.lastIndexOf(LEFT_SLASH));
-                LOGGER.info("img name: " + imgName);
-                FileOutputStream fs = new FileOutputStream(IMAGE_PATH + imgName);
+                //LOGGER.info("img name: " + imgName);
+                FileOutputStream fs = new FileOutputStream(config.getImagePath() + imgName);
 
                 int byteread;
                 byte[] buffer = new byte[1204];

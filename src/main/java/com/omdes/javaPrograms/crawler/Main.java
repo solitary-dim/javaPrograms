@@ -58,8 +58,12 @@ public final class Main {
 
     private static Integer deep = 0;
 
+    protected static PropertiesConfig config = PropertiesConfig.getInstance();
+
     public static void main(String[] args) {
-        new CrawlerPages().crawlerFromUrl("http://www.baidu.com");
+        config.loadPropertiesFromSrc();
+
+        new CrawlerPages().crawlerFromUrl("http://www.hao123.com");
 
         /*final List<String> list = new ArrayList<>();
         list.add(url);
