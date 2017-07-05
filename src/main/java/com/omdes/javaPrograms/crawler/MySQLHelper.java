@@ -169,7 +169,7 @@ public final class MySQLHelper {
                         append(" WHERE DELETED_FLAG = 0").
                         append(" AND IS_USED = 0");
                 //判断是否针对特定标签查询出未访问过的url，否则查询出所有
-                if (StringUtils.isEmpty(type)) {
+                if (StringUtils.isNotEmpty(type)) {
                     if ("a".equals(type)) {
                         //仅查询未访问过的a标签的href
                         sql.append(" AND LEVEL > 0;");
@@ -221,7 +221,7 @@ public final class MySQLHelper {
                         append(tableName).
                         append(" WHERE DELETED_FLAG = 0");
                 //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
-                if (StringUtils.isEmpty(type)) {
+                if (StringUtils.isNotEmpty(type)) {
                     if ("a".equals(type)) {
                         //仅查询已经访问过的a标签的href
                         sql.append(" AND LEVEL > 0;");
