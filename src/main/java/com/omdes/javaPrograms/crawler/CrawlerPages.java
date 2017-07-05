@@ -29,7 +29,12 @@ public final class CrawlerPages {
     private static Set<String> imgUnvisitedUrl = new HashSet<>();
     private static Set<String> imgVisitedUrl = new HashSet<>();
 
-    private static List<URLEntity> list = new ArrayList<>();
+    //需要做更新操作的url的集合
+    private static Set<String> updateUrl = new HashSet<>();
+
+    private static List<URLEntity> addList = new ArrayList<>();
+    private static Map<String, URLEntity> updateMap = new HashMap<>();
+    private static List<URLEntity> updateList = new ArrayList<>();
     private static int index = 0;
     private static long id = 1L;
 
@@ -41,8 +46,8 @@ public final class CrawlerPages {
      * 主方法
      */
     public void crawlerFromUrl(String url) {
-        mySQLHelper = MySQLHelper.getInstance();
-        startId = mySQLHelper.getIdStart(config.getMysqlTableName());
+        this.beforeCrawler();
+
         this.setUrl(url);
     }
 
@@ -75,6 +80,22 @@ public final class CrawlerPages {
         for (Element element : elements) {
             String link = element.attr("src").trim();
             if (StringUtils.isNotEmpty(link)) {
+                if (link.contains(DOUBLE_WELL_NUMBER)) {
+                    //排除掉src="##"的这种情况
+                    continue;
+                }
+                if (link.contains(DATA)) {
+                    //todo
+                    /*link = "view-source:" + link;
+                    //判断是否是已经下载过的图片url
+                    if (!imgVisitedUrl.contains(link)) {
+                        imgUnvisitedUrl.add(link);
+                    }*/
+                    continue;
+                }
+                if (link.contains("../")) {
+                    continue;
+                }
                 if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
                     link = link.substring(0, link.length() - 1);
                 }
@@ -84,9 +105,44 @@ public final class CrawlerPages {
                 if (!link.contains(HTTP) && !link.contains(HTTPS)) {
                     link = HTTP + link;
                 }
+                if (link.contains("///")) {
+                    continue;
+                }
                 //判断是否是已经下载过的图片url
                 if (!imgVisitedUrl.contains(link)) {
                     imgUnvisitedUrl.add(link);
+                }
+            }
+        }
+    }
+
+    //在本次开始爬虫前，先对数据库中保存的上次未完成的url继续操作
+    private void beforeCrawler() {
+        mySQLHelper = MySQLHelper.getInstance();
+        startId = mySQLHelper.getIdStart(config.getMysqlTableName());
+        List<URLEntity> list = mySQLHelper.getUnvisitedUrl(config.getMysqlTableName(), null);
+
+        if (null != list && list.size() > 0) {
+            for (URLEntity entity : list) {
+                if (entity.getLevel() == 0) {
+                    imgUnvisitedUrl.add(entity.getUrl());
+                } else {
+                    aUnvisitedUrl.add(entity.getUrl());
+                }
+                //将已经保存过在数据库中的URL实体类放入到做更新操作的集合中
+                updateUrl.add(entity.getUrl());
+                updateMap.put(entity.getUrl(), entity);
+            }
+            list.removeAll(list);
+        }
+
+        list = mySQLHelper.getVisitedUrl(config.getMysqlTableName(), null);
+        if (null != list && list.size() > 0) {
+            for (URLEntity entity : list) {
+                if (entity.getLevel() == 0) {
+                    imgVisitedUrl.add(entity.getUrl());
+                } else {
+                    aVisitedUrl.add(entity.getUrl());
                 }
             }
         }
@@ -183,14 +239,36 @@ public final class CrawlerPages {
 
     //将数据批量存储数据库前的预处理
     private void saveUrlTemp(URLEntity urlEntity) {
-        list.add(urlEntity);
-        index++;
-        if (index >= config.getMysqlBatchMax()) {
-            saveUrl(list);
+        String url = urlEntity.getUrl();
+        //判断是否要做更新操作的URL
+        if (!updateUrl.contains(url)) {
+            addList.add(urlEntity);
+            index++;
+            if (index >= config.getMysqlBatchMax()) {
+                saveUrl(addList);
 
-            index = 0;
-            list.removeAll(list);
-            LOGGER.info("save data into MySQL");
+                index = 0;
+                addList.removeAll(addList);
+                LOGGER.info("save data into MySQL");
+            }
+        } else {
+            //是要做更新的url，因为不做新增操作，所以现有id需要回退一
+            id--;
+            //将本次实体类添加到更新队列中
+            URLEntity entity = updateMap.get(url);
+            entity.setLevel(urlEntity.getLevel());
+            entity.setIsUsed(urlEntity.getIsUsed());
+            entity.setCount(urlEntity.getCount());
+            entity.setContent(urlEntity.getContent());
+            entity.setNotes(urlEntity.getNotes());
+            updateList.add(entity);
+
+            updateUrl.remove(url);
+            updateMap.remove(url);
+            if (updateMap.size() == 0) {
+                updateUrl(updateList);
+                updateList.removeAll(updateList);
+            }
         }
     }
 
@@ -227,6 +305,44 @@ public final class CrawlerPages {
             }
             pstmt.executeBatch();
             connection.commit();
+
+            if (null != pstmt) {
+                pstmt.close();
+            }
+        } catch (SQLException e) {
+            LOGGER.error("SQLException!", e);
+        }
+    }
+
+    //连接数据库，将数据批量存入数据库
+    private void updateUrl(List<URLEntity> list) {
+        String sql = "UPDATE T_URL SET UPDATED_TIME = ?, UPDATED_USER_ID = ?, LEVEL = ?," +
+                " IS_USED = ?, COUNT = ?, CONTENT =?, NOTES = ? WHERE ID = ?";
+
+        try {
+            mySQLHelper.openConnection();
+            Connection connection = mySQLHelper.getConnection();
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            connection.setAutoCommit(false);
+            for (URLEntity entity: list) {
+                Date date = new Date();
+                pstmt.setTimestamp(1, new Timestamp(date.getTime()));
+                //pstmt.setLong(2, entity.getUpdatedUserId());
+                pstmt.setLong(2, 0L);
+                pstmt.setLong(3, entity.getLevel());
+                pstmt.setInt(4, entity.getIsUsed());
+                pstmt.setInt(5, entity.getCount());
+                pstmt.setString(6, entity.getContent());
+                pstmt.setString(7, entity.getNotes());
+                pstmt.setLong(8, entity.getId());
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+            connection.commit();
+
+            if (null != pstmt) {
+                pstmt.close();
+            }
         } catch (SQLException e) {
             LOGGER.error("SQLException!", e);
         }

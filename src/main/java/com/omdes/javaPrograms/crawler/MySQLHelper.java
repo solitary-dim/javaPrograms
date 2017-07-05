@@ -1,5 +1,7 @@
 package com.omdes.javaPrograms.crawler;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -150,14 +152,86 @@ public final class MySQLHelper {
         return id;
     }
 
-    public List<URLEntity> getUnvisitedUrl(String tableName) {
+    /**
+     * 得到当前表中还未访问过的url
+     * @param tableName 表名
+     * @param type a-url；i-src
+     * @return
+     */
+    public List<URLEntity> getUnvisitedUrl(String tableName, String type) {
         List<URLEntity> list = new ArrayList<>();
         //判断数据库中是否已经存在了数据
         if (!isEmpty(tableName)) {
             this.openConnection();
             try {
+                StringBuilder sql = new StringBuilder("SELECT * FROM ").
+                        append(tableName).
+                        append(" WHERE DELETED_FLAG = 0").
+                        append(" AND IS_USED = 0");
+                //判断是否针对特定标签查询出未访问过的url，否则查询出所有
+                if (StringUtils.isEmpty(type)) {
+                    if ("a".equals(type)) {
+                        //仅查询未访问过的a标签的href
+                        sql.append(" AND LEVEL > 0;");
+                    } else if ("i".equals(type)) {
+                        //仅查询未访问过的img标签的src
+                        sql.append(" AND LEVEL = 0;");
+                    }
+                }
                 this.statement = this.connection.createStatement();
-                this.resultSet = this.statement.executeQuery("SELECT * FROM "+ tableName + " WHERE DELETED_FLAG = 0 AND IS_USED = 0 AND LEVEL > 0;");
+                this.resultSet = this.statement.executeQuery(sql.toString());
+                while (this.resultSet.next()) {
+                    URLEntity entity = new URLEntity();
+                    entity.setId(resultSet.getLong(1));
+                    entity.setName(resultSet.getString(2));
+                    entity.setStatus(resultSet.getInt(3));
+                    entity.setDeletedFlag(resultSet.getInt(4));
+                    entity.setCreatedTime(resultSet.getTimestamp(5));
+                    entity.setCreatedUserId(resultSet.getLong(6));
+                    entity.setUpdatedTime(resultSet.getTimestamp(7));
+                    entity.setUpdatedUserId(resultSet.getLong(8));
+                    entity.setLevel(resultSet.getLong(9));
+                    entity.setUrl(resultSet.getString(10));
+                    entity.setIsUsed(resultSet.getInt(11));
+                    entity.setCount(resultSet.getInt(12));
+                    entity.setContent(resultSet.getString(13));
+                    entity.setNotes(resultSet.getString(14));
+                    list.add(entity);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 得到当前表中已经访问过的url
+     * @param tableName 表名
+     * @param type a-url；i-src
+     * @return
+     */
+    public List<URLEntity> getVisitedUrl(String tableName, String type) {
+        List<URLEntity> list = new ArrayList<>();
+        //判断数据库中是否已经存在了数据
+        if (!isEmpty(tableName)) {
+            this.openConnection();
+            try {
+                StringBuilder sql = new StringBuilder("SELECT * FROM ").
+                        append(tableName).
+                        append(" WHERE DELETED_FLAG = 0");
+                //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
+                if (StringUtils.isEmpty(type)) {
+                    if ("a".equals(type)) {
+                        //仅查询已经访问过的a标签的href
+                        sql.append(" AND LEVEL > 0;");
+                    } else if ("i".equals(type)) {
+                        //仅查询已经访问过的img标签的src
+                        sql.append(" AND LEVEL = 0;");
+                    }
+                }
+                this.statement = this.connection.createStatement();
+                this.resultSet = this.statement.executeQuery(sql.toString());
                 while (this.resultSet.next()) {
                     URLEntity entity = new URLEntity();
                     entity.setId(resultSet.getLong(1));
