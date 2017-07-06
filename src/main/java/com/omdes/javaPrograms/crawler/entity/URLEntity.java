@@ -1,4 +1,4 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.entity;
 
 import java.io.Serializable;
 import java.util.Date;

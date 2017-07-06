@@ -1,5 +1,6 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.impl;
 
+import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +13,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Set;
 
-import static com.omdes.javaPrograms.crawler.BaseConfig.LEFT_SLASH;
+import static com.omdes.javaPrograms.crawler.config.BaseConfig.LEFT_SLASH;
 
 /**
  * Created with IntelliJ IDEA.

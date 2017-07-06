@@ -1,5 +1,8 @@
 package com.omdes.javaPrograms.crawler;
 
+import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
+import com.omdes.javaPrograms.crawler.impl.CrawlerPages;
+
 /**
  * Created with IntelliJ IDEA.
  * User: Solitary.Wang
@@ -44,7 +47,9 @@ public final class Main {
     public static void main(String[] args) {
         config.loadPropertiesFromSrc();
 
-        new CrawlerPages().crawlerFromUrl("http://www.hao123.com");
+        //new CrawlerPages().crawlerFromUrl("http://www.hao123.com");
+        //new CrawlerPages().crawlerFromUrl("http://image.baidu.com");
+        new CrawlerPages().crawlerFromUrl("http://image.baidu.com/search/index?tn=baiduimage&ipn=r&ct=201326592&cl=2&lm=-1&st=-1&sf=2&fmq=1480332039000_R_D&pv=&ic=0&nc=1&z=&se=&showtab=0&fb=0&width=&height=&face=0&istype=2&ie=utf-8&word=%E5%BE%AE%E8%B7%9D%E6%91%84%E5%BD%B1");
 
     }
 }

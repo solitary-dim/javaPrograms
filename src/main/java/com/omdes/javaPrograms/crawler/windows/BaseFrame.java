@@ -1,4 +1,4 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.windows;
 
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;

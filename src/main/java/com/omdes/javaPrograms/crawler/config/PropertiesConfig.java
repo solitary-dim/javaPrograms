@@ -1,11 +1,11 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.config;
 
 import org.apache.commons.lang.StringUtils;
 
 import java.io.*;
 import java.util.Properties;
 
-import static com.omdes.javaPrograms.crawler.BaseConfig.ENCODING;
+import static com.omdes.javaPrograms.crawler.config.BaseConfig.ENCODING;
 
 /**
  * Created with IntelliJ IDEA.

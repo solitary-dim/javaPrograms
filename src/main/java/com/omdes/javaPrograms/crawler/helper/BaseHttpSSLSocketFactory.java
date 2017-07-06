@@ -1,4 +1,4 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.helper;
 
 import org.slf4j.Logger;
 

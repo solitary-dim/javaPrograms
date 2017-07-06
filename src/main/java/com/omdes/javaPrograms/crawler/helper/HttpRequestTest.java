@@ -1,5 +1,7 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.helper;
 
+import com.omdes.javaPrograms.crawler.config.BaseConfig;
+import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

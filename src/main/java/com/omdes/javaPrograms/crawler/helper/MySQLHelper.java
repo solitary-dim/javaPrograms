@@ -1,5 +1,7 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.helper;
 
+import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
+import com.omdes.javaPrograms.crawler.entity.URLEntity;
 import org.apache.commons.lang.StringUtils;
 
 import java.sql.*;

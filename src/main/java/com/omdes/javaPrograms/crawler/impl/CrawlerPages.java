@@ -1,5 +1,9 @@
-package com.omdes.javaPrograms.crawler;
+package com.omdes.javaPrograms.crawler.impl;
 
+import com.omdes.javaPrograms.crawler.helper.HttpClient;
+import com.omdes.javaPrograms.crawler.helper.MySQLHelper;
+import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
+import com.omdes.javaPrograms.crawler.entity.URLEntity;
 import org.apache.commons.lang.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -13,7 +17,7 @@ import java.sql.*;
 import java.util.*;
 import java.util.Date;
 
-import static com.omdes.javaPrograms.crawler.BaseConfig.*;
+import static com.omdes.javaPrograms.crawler.config.BaseConfig.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -37,9 +41,10 @@ public final class CrawlerPages {
     private static List<URLEntity> updateList = new ArrayList<>();
     private static int index = 0;
     private static long id = 1L;
+    //修改递归为每层逐层爬取
+    private static long level = 1L;
 
     private PropertiesConfig config = PropertiesConfig.getInstance();
-
     private MySQLHelper mySQLHelper;
     private static long startId;
     /**
@@ -75,45 +80,61 @@ public final class CrawlerPages {
      * 拿取所有img标签的src
      * @param doc
      */
-    private void getImgLink(Document doc) {
+    private void getImgSrc(Document doc) {
         Elements elements = doc.getElementsByTag("img");
         for (Element element : elements) {
             String link = element.attr("src").trim();
             if (StringUtils.isNotEmpty(link)) {
-                if (link.contains(DOUBLE_WELL_NUMBER)) {
-                    //排除掉src="##"的这种情况
-                    continue;
+                link = this.correctImgSrc(link);
+                //判断是否是已经下载过的图片url
+                if (StringUtils.isNotEmpty(link) && !imgVisitedUrl.contains(link)) {
+                    imgUnvisitedUrl.add(link);
                 }
-                if (link.contains(DATA)) {
-                    //todo
+            }
+        }
+    }
+
+    //对图片的src进行处理
+    private String correctImgSrc(String link) {
+        //去除##
+        if (link.contains(DOUBLE_WELL_NUMBER)) {
+            //排除掉src="##"的这种情况
+            return null;
+        }
+        //去除data：
+        if (link.contains(DATA)) {
+            //todo
                     /*link = "view-source:" + link;
                     //判断是否是已经下载过的图片url
                     if (!imgVisitedUrl.contains(link)) {
                         imgUnvisitedUrl.add(link);
                     }*/
-                    continue;
-                }
-                if (link.contains("../")) {
-                    continue;
-                }
-                if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
-                    link = link.substring(0, link.length() - 1);
-                }
-                if (!link.contains(DOUBLE_LEFT_SLASH)) {
-                    link = DOUBLE_LEFT_SLASH + link;
-                }
-                if (!link.contains(HTTP) && !link.contains(HTTPS)) {
-                    link = HTTP + link;
-                }
-                if (link.contains("///")) {
-                    continue;
-                }
-                //判断是否是已经下载过的图片url
-                if (!imgVisitedUrl.contains(link)) {
-                    imgUnvisitedUrl.add(link);
-                }
-            }
+            return null;
         }
+        //去除../g.hiphotos.baidu.com/d1160924ab18972b41b1746deccd7b899f510a89.jpg
+        if (link.contains("../")) {
+            return null;
+        }
+        if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
+            link = link.substring(0, link.length() - 1);
+        }
+        if (!link.contains(DOUBLE_LEFT_SLASH)) {
+            link = DOUBLE_LEFT_SLASH + link;
+        }
+        //去除http://charts.edgar-online.com/ext/charts.dll?2-2-18-0-0-56-03NA000000BIDU-&SF:1|31-HT=180-WD=192-FREQ=6-BG=FFFFFF-FF:A18=ffffff|A33=ffffff-FTS:A17=0-FC:2=c9e4ff-FC:3=c9e4ff-HC=2-HO:SW-FF:1=c9e4ff-FB:1=c9e4ff-FL:1=c9e4ff-AT:9=0:8=000000-FC:3=009900-BT=0-FL:A17=f2f2f2|A5=f2f2f2|A9=f2f2f2|A33=f2f2f2|A34=f2f2f2|A6=999999|A10=999999|A18=999999|G1=dddddd|G2=dddddd-FTC:NW=f2f2f2|NE=f2f2f2|A17=999999|SE=f2f2f2|SW=f2f2f2-HO:NW-FF:1=c9e4ff-FB:1=c9e4ff-FL:1=c9e4ff-AT:9=0-FTC:AI33=999999|AM33=999999|AM9=999999-FF:1=c9e4ff-FB:1=c9e4ff-FL:1=c9e4ff-AT:9=0
+        if (!link.contains(HTTP) && !link.contains(HTTPS) && !link.contains(".dll")) {
+            link = HTTP + link;
+        }
+        //去除http:///wolfman/static/common/images/transparent.gif
+        if (link.contains("///")) {
+            return null;
+        }
+        //去除http://timg.baidu.com/timg
+        String temp = link.substring(link.lastIndexOf("/"), link.length());
+        if (!temp.contains(".")) {
+            return null;
+        }
+        return link;
     }
 
     //在本次开始爬虫前，先对数据库中保存的上次未完成的url继续操作
@@ -154,50 +175,63 @@ public final class CrawlerPages {
         aUnvisitedUrl.add(url);
         URLEntity entity = new URLEntity();
         entity.setId(startId + id);
-        entity.setLevel(1L);
+        entity.setLevel(level);
         entity.setUrl(url);
         entity.setIsUsed(0);
         entity.setNotes("Page");
-        doCrawler(entity);
+
+        //第一层
+        List<URLEntity> list = new ArrayList<>();
+        list.add(entity);
+        doCrawler(list);
     }
 
     //开始爬虫
-    private void doCrawler(URLEntity entity) {
-        //标注本次访问的url为已访问
-        entity.setIsUsed(1);
+    private void doCrawler(List<URLEntity> currentLevel) {
+        //每进入下一层，层级加一
+        level++;
+        //记录下一层所有待爬取页面url
+        List<URLEntity> nextLevel = new ArrayList<>();
 
-        Long level = entity.getLevel() + 1L;
-        List<URLEntity> list = new ArrayList<>();
+        for (URLEntity entity:currentLevel) {
+            //标注本次访问的url为已访问
+            entity.setIsUsed(1);
 
-        //将本次访问url添加到已经访问过url
-        aVisitedUrl.add(entity.getUrl());
-        //将本次访问url从未访问过url中移出
-        aUnvisitedUrl.remove(entity.getUrl());
-        HttpClient httpClient = new HttpClient(entity.getUrl(), config.getTimeout(), config.getTimeout());
+            //将本次访问url添加到已经访问过url
+            aVisitedUrl.add(entity.getUrl());
+            //将本次访问url从未访问过url中移出
+            aUnvisitedUrl.remove(entity.getUrl());
 
-        String htmlBody = "";
-        try {
-            httpClient.sendData("GET", null);
-            htmlBody = httpClient.getResult();
-            //LOGGER.info(htmlBody);
-        } catch (IOException e) {
-            LOGGER.error("error!", e);
+            //通过url进行页面访问
+            HttpClient httpClient = new HttpClient(entity.getUrl(), config.getTimeout(), config.getTimeout());
+            String htmlBody = "";
+            try {
+                httpClient.sendData("GET", null);
+                htmlBody = httpClient.getResult();
+                //LOGGER.info(htmlBody);
+            } catch (IOException e) {
+                LOGGER.error("error!", e);
+            }
+            //将通过本次url访问所得页面内容记录下
+            if (StringUtils.isNotEmpty(htmlBody)) {
+                entity.setContent(htmlBody);
+            }
+            saveUrlTemp(entity);
+
+            //得到本次url所得页面中文档数据
+            Document doc = Jsoup.parse(htmlBody);
+
+            //将本次url指向的页面中图片的url保存下来
+            getImgSrc(doc);
+
+            //将本次url指向的页面中的url保存下来
+            getALink(doc);
         }
-        //将通过本次url访问所得页面内容记录下
-        if (StringUtils.isNotEmpty(htmlBody)) {
-            entity.setContent(htmlBody);
-        }
-        saveUrlTemp(entity);
 
-        Document doc = Jsoup.parse(htmlBody);
-
-        //将本次url指向的页面中图片的url保存下来
-        getImgLink(doc);
+        //一层所有url访问结束后，下载本层所有图片
         //download pictures from internet
         new ImageDownload().imageDownload(imgUnvisitedUrl);
         for (String link : imgUnvisitedUrl) {
-            //LOGGER.info("image url: " + link);
-
             URLEntity imgEntity = new URLEntity();
             id++;
             imgEntity.setId(startId + id);
@@ -209,7 +243,7 @@ public final class CrawlerPages {
 
             //将已经下载过的图片src转入已使用过set
             imgVisitedUrl.add(link);
-            //imgUnvisitedUrl.remove(link);会报错语句，删除注释可以重新报错
+            //imgUnvisitedUrl.remove(link);会报错语句，取消注释可以重新报错
         }
         //移除已经访问过的图片src
         for (String link: imgVisitedUrl) {
@@ -218,11 +252,8 @@ public final class CrawlerPages {
             }
         }
 
-        //将本次url指向的页面中的url保存下来
-        getALink(doc);
+        //一层结束后，拿取本层得到的未访问过的url，逐条进行访问
         for (String link : aUnvisitedUrl) {
-            //LOGGER.info("page url: " + link);
-
             URLEntity urlEntity = new URLEntity();
             id++;
             urlEntity.setId(startId + id);
@@ -230,11 +261,11 @@ public final class CrawlerPages {
             urlEntity.setUrl(link);
             urlEntity.setIsUsed(0);
             urlEntity.setNotes("Page");
-            list.add(urlEntity);
+            nextLevel.add(urlEntity);
 
-            //递归，根据新url去爬下一层的新的页面
-            doCrawler(urlEntity);
         }
+        //递归，根据新url去爬下一层的新的页面
+        doCrawler(nextLevel);
     }
 
     //将数据批量存储数据库前的预处理
