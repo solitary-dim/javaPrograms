@@ -3,10 +3,11 @@ package com.omdes.javaPrograms.crawler.helper;
 import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
 import com.omdes.javaPrograms.crawler.entity.URLEntity;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -15,6 +16,7 @@ import java.util.List;
  * Time: 19:02
  */
 public final class MySQLHelper {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySQLHelper.class);
     private static volatile MySQLHelper mySQLHelper;
 
     private Connection connection = null;
@@ -166,7 +168,7 @@ public final class MySQLHelper {
         if (!isEmpty(tableName)) {
             this.openConnection();
             try {
-                StringBuilder sql = new StringBuilder("SELECT * FROM ").
+                StringBuilder sql = new StringBuilder("SELECT ID,LEVEL,URL,IS_USED,COUNT FROM ").
                         append(tableName).
                         append(" WHERE DELETED_FLAG = 0").
                         append(" AND IS_USED = 0");
@@ -185,19 +187,10 @@ public final class MySQLHelper {
                 while (this.resultSet.next()) {
                     URLEntity entity = new URLEntity();
                     entity.setId(resultSet.getLong(1));
-                    entity.setName(resultSet.getString(2));
-                    entity.setStatus(resultSet.getInt(3));
-                    entity.setDeletedFlag(resultSet.getInt(4));
-                    entity.setCreatedTime(resultSet.getTimestamp(5));
-                    entity.setCreatedUserId(resultSet.getLong(6));
-                    entity.setUpdatedTime(resultSet.getTimestamp(7));
-                    entity.setUpdatedUserId(resultSet.getLong(8));
-                    entity.setLevel(resultSet.getLong(9));
-                    entity.setUrl(resultSet.getString(10));
-                    entity.setIsUsed(resultSet.getInt(11));
-                    entity.setCount(resultSet.getInt(12));
-                    entity.setContent(resultSet.getString(13));
-                    entity.setNotes(resultSet.getString(14));
+                    entity.setLevel(resultSet.getLong(2));
+                    entity.setUrl(resultSet.getString(3));
+                    entity.setIsUsed(resultSet.getInt(4));
+                    entity.setCount(resultSet.getInt(5));
                     list.add(entity);
                 }
             } catch (SQLException e) {
@@ -219,9 +212,10 @@ public final class MySQLHelper {
         if (!isEmpty(tableName)) {
             this.openConnection();
             try {
-                StringBuilder sql = new StringBuilder("SELECT * FROM ").
+                StringBuilder sql = new StringBuilder("SELECT ID,LEVEL,URL,IS_USED,COUNT FROM ").
                         append(tableName).
-                        append(" WHERE DELETED_FLAG = 0");
+                        append(" WHERE DELETED_FLAG = 0").
+                        append(" AND IS_USED = 0");
                 //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
                 if (StringUtils.isNotEmpty(type)) {
                     if ("a".equals(type)) {
@@ -237,19 +231,10 @@ public final class MySQLHelper {
                 while (this.resultSet.next()) {
                     URLEntity entity = new URLEntity();
                     entity.setId(resultSet.getLong(1));
-                    entity.setName(resultSet.getString(2));
-                    entity.setStatus(resultSet.getInt(3));
-                    entity.setDeletedFlag(resultSet.getInt(4));
-                    entity.setCreatedTime(resultSet.getTimestamp(5));
-                    entity.setCreatedUserId(resultSet.getLong(6));
-                    entity.setUpdatedTime(resultSet.getTimestamp(7));
-                    entity.setUpdatedUserId(resultSet.getLong(8));
-                    entity.setLevel(resultSet.getLong(9));
-                    entity.setUrl(resultSet.getString(10));
-                    entity.setIsUsed(resultSet.getInt(11));
-                    entity.setCount(resultSet.getInt(12));
-                    entity.setContent(resultSet.getString(13));
-                    entity.setNotes(resultSet.getString(14));
+                    entity.setLevel(resultSet.getLong(2));
+                    entity.setUrl(resultSet.getString(3));
+                    entity.setIsUsed(resultSet.getInt(4));
+                    entity.setCount(resultSet.getInt(5));
                     list.add(entity);
                 }
             } catch (SQLException e) {
@@ -257,5 +242,117 @@ public final class MySQLHelper {
             }
         }
         return list;
+    }
+
+    /**
+     * 连接数据库，将数据批量存入数据库
+     * @param list
+     */
+    public void saveUrl(List<URLEntity> list) {
+        String sql = "INSERT INTO T_URL (ID, NAME, STATUS, DELETED_FLAG, CREATED_TIME, " +
+                "CREATED_USER_ID, UPDATED_TIME, UPDATED_USER_ID, LEVEL, URL, IS_USED, " +
+                "COUNT, CONTENT, NOTES) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+        this.openConnection();
+        try {
+            Connection connection = this.connection;
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            connection.setAutoCommit(false);
+            for (URLEntity entity: list) {
+                java.util.Date date = new java.util.Date();
+                pstmt.setLong(1, entity.getId());
+                pstmt.setString(2, entity.getName());
+                pstmt.setInt(3, entity.getStatus());
+                pstmt.setInt(4, entity.getDeletedFlag());
+                pstmt.setTimestamp(5, new Timestamp(date.getTime()));
+                //pstmt.setLong(6, entity.getCreatedUserId());
+                pstmt.setLong(6, 0L);
+                pstmt.setTimestamp(7, new Timestamp(date.getTime()));
+                //pstmt.setLong(8, entity.getUpdatedUserId());
+                pstmt.setLong(8, 0L);
+                pstmt.setLong(9, entity.getLevel());
+                pstmt.setString(10, entity.getUrl());
+                pstmt.setInt(11, entity.getIsUsed());
+                pstmt.setInt(12, entity.getCount());
+                pstmt.setString(13, entity.getContent());
+                pstmt.setString(14, entity.getNotes());
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+            connection.commit();
+
+            if (null != pstmt) {
+                pstmt.close();
+            }
+        } catch (SQLException e) {
+            LOGGER.error("SQLException!", e);
+        }
+    }
+
+    /**
+     * 连接数据库，将数据批量存入数据库
+     * @param list
+     */
+    public void updateUrl(List<URLEntity> list) {
+        String sql = "UPDATE T_URL SET UPDATED_TIME = ?, UPDATED_USER_ID = ?, LEVEL = ?," +
+                " IS_USED = ?, COUNT = ?, CONTENT =?, NOTES = ? WHERE ID = ?";
+
+        this.openConnection();
+        try {
+            Connection connection = this.connection;
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            connection.setAutoCommit(false);
+            for (URLEntity entity: list) {
+                java.util.Date date = new java.util.Date();
+                pstmt.setTimestamp(1, new Timestamp(date.getTime()));
+                pstmt.setLong(2, 0L);
+                pstmt.setLong(3, entity.getLevel());
+                pstmt.setInt(4, entity.getIsUsed());
+                pstmt.setInt(5, entity.getCount());
+                pstmt.setString(6, entity.getContent());
+                pstmt.setString(7, entity.getNotes());
+                pstmt.setLong(8, entity.getId());
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+            connection.commit();
+
+            if (null != pstmt) {
+                pstmt.close();
+            }
+        } catch (SQLException e) {
+            LOGGER.error("SQLException!", e);
+        }
+    }
+
+    /**
+     * 连接数据库，将黑名单批量存入数据库
+     * @param blackList
+     */
+    public void saveBlackList(Set<String> blackList) {
+        long id = mySQLHelper.getIdStart("T_BLACKLIST");
+
+        String sql = "INSERT INTO T_BLACKLIST (ID, NAME, COUNT, NOTES) VALUES (?,?,?,?)";
+
+        try {
+            Connection connection = this.connection;
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            connection.setAutoCommit(false);
+            for (String str: blackList) {
+                pstmt.setLong(1, id);
+                pstmt.setString(2, str);
+                pstmt.setInt(3, 1);
+                pstmt.setString(4, "");
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+            connection.commit();
+
+            if (null != pstmt) {
+                pstmt.close();
+            }
+        } catch (SQLException e) {
+            LOGGER.error("SQLException!", e);
+        }
     }
 }

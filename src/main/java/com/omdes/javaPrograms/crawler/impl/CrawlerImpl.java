@@ -1,14 +1,16 @@
 package com.omdes.javaPrograms.crawler.impl;
 
-import com.omdes.javaPrograms.crawler.helper.HttpClient;
 import com.omdes.javaPrograms.crawler.entity.URLEntity;
+import com.omdes.javaPrograms.crawler.helper.HttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

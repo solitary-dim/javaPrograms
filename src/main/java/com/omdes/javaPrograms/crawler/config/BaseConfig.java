@@ -15,7 +15,6 @@ public final class BaseConfig {
     //HTTP请求放回状态码
     public static final int HTTP_RESPONSE_CODE_SUCCESS = 200;
 
-
     public static final char AND_CHAR = '&';
     public static final char LEFT_SLASH = '/';
     public static final char QUESTION_MARK_CHAR = '?';
@@ -27,4 +26,6 @@ public final class BaseConfig {
     public static final String PHP = ".php";
     public static final String DATA = "data:";
     public static final String DOUBLE_WELL_NUMBER = "##";
+
+    public static final int QUEUE_MAX = 1000;
 }
