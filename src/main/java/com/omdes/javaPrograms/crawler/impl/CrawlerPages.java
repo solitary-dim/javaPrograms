@@ -90,6 +90,12 @@ public final class CrawlerPages {
                 if (StringUtils.isNotEmpty(link) && !imgVisitedUrl.contains(link)) {
                     imgUnvisitedUrl.add(link);
                 }
+                //在待下载图片src过多的情形下，暂定积攒到了1000条后就去下载，并清空待下载src列表
+                if (imgUnvisitedUrl.size() > 1000) {
+                    new ImageDownload().imageDownload(imgUnvisitedUrl);
+                    imgVisitedUrl.addAll(imgUnvisitedUrl);
+                    imgUnvisitedUrl.removeAll(imgUnvisitedUrl);
+                }
             }
         }
     }
@@ -246,11 +252,13 @@ public final class CrawlerPages {
             //imgUnvisitedUrl.remove(link);会报错语句，取消注释可以重新报错
         }
         //移除已经访问过的图片src
-        for (String link: imgVisitedUrl) {
+        /*for (String link: imgVisitedUrl) {
             if (imgUnvisitedUrl.contains(link)) {
                 imgUnvisitedUrl.remove(link);
             }
-        }
+        }*/
+        imgVisitedUrl.addAll(imgUnvisitedUrl);
+        imgUnvisitedUrl.removeAll(imgUnvisitedUrl);
 
         //一层结束后，拿取本层得到的未访问过的url，逐条进行访问
         for (String link : aUnvisitedUrl) {
