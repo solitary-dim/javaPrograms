@@ -264,19 +264,19 @@ public final class MySQLHelper {
         sql = sql.append("INSERT INTO T_URL (ID, NAME, STATUS, DELETED_FLAG, CREATED_TIME, ").
                 append("CREATED_USER_ID, UPDATED_TIME, UPDATED_USER_ID, LEVEL, URL, IS_USED, ").
                 append("COUNT, CONTENT, NOTES) VALUES (").append(entity.getId()).append(",").
-                append(entity.getName()).append(",").
+                append("'").append(entity.getName()).append("',").
                 append(entity.getStatus()).append(",").
                 append(entity.getDeletedFlag()).append(",").
-                append(new Timestamp(date.getTime())).append(",").
+                append("'").append(new Timestamp(date.getTime())).append("',").
                 append(0L).append(",").
-                append(new Timestamp(date.getTime())).append(",").
+                append("'").append(new Timestamp(date.getTime())).append("',").
                 append(0L).append(",").
                 append(entity.getLevel()).append(",").
-                append(entity.getUrl()).append(",").
+                append("'").append(entity.getUrl()).append("',").
                 append(entity.getIsUsed()).append(",").
                 append(entity.getCount()).append(",").
-                append(entity.getContent()).append(",").
-                append(entity.getNotes()).append(")");
+                append("'").append(entity.getContent()).append("',").
+                append("'").append(entity.getNotes()).append("')");
 
         this.openConnection();
         try {
@@ -339,10 +339,42 @@ public final class MySQLHelper {
     }
 
     /**
+     * 连接数据库，将数据存入数据库
+     * @param entity
+     */
+    public void updateUrl(URLEntity entity) {
+        Date date = new Date();
+        StringBuilder sql = new StringBuilder();
+        sql = sql.append("UPDATE T_URL SET ").
+                append("UPDATED_TIME = '").append(new Timestamp(date.getTime())).append("',").
+                append("UPDATED_USER_ID = ").append(0L).append(",").
+                append("LEVEL = ").append(entity.getLevel()).append(",").
+                append("IS_USED = ,").append(entity.getIsUsed()).append(",").
+                append("COUNT = ").append(entity.getCount()).append(",").
+                append("CONTENT = '").append(entity.getContent()).append("',").
+                append("NOTES = '").append(entity.getNotes()).append("'").
+                append("WHERE ID = ").append(entity.getId());
+
+        this.openConnection();
+        try {
+            Connection connection = this.connection;
+            Statement pstmt= connection.createStatement();
+            int result = pstmt.executeUpdate(sql.toString());
+            LOGGER.info("update data result: " + result);
+
+            if (null != pstmt) {
+                pstmt.close();
+            }
+        } catch (SQLException e) {
+            LOGGER.error("SQLException!", e);
+        }
+    }
+
+    /**
      * 连接数据库，将数据批量存入数据库
      * @param list
      */
-    public void updateUrl(List<URLEntity> list) {
+    public void updateUrlList(List<URLEntity> list) {
         String sql = "UPDATE T_URL SET UPDATED_TIME = ?, UPDATED_USER_ID = ?, LEVEL = ?," +
                 " IS_USED = ?, COUNT = ?, CONTENT =?, NOTES = ? WHERE ID = ?";
 
