@@ -81,7 +81,7 @@ public final class ImageDownload {
                     imgEntity.setUrl(link);
                     imgEntity.setIsUsed(1);
                     imgEntity.setContent(imgFullName);
-                    imgEntity.setNotes("Image");
+                    imgEntity.setNotes(NOTES_IMAGE);
                     list.add(imgEntity);
                 }
             } catch (MalformedURLException e) {
@@ -98,7 +98,7 @@ public final class ImageDownload {
         }
 
         //save src to database
-        mySQLHelper.saveUrl(list);
+        mySQLHelper.saveUrlList(list);
         list.removeAll(list);
 
         //save blacklist to database

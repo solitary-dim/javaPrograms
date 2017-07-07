@@ -26,6 +26,7 @@ public final class HtmlHelper {
     private static final String HTTPS = "https:";
     private static final String PHP = ".php";
     private static final String DLL = ".dll";
+    private static final String BS = ".bs";
     private static final String DATA = "data:";
     private static final String DOUBLE_WELL_NUMBER = "##";
 
@@ -76,8 +77,8 @@ public final class HtmlHelper {
         if (!link.contains(DOUBLE_LEFT_SLASH)) {
             link = DOUBLE_LEFT_SLASH + link;
         }
-        //去除http://charts.edgar-online.com/ext/charts.dll?2-2-18-0-0-56-03NA000000BIDU-&SF:1|31-HT=180-WD=192-FREQ=6-BG=FFFFFF-FF:A18=ffffff|A33=ffffff-FTS:A17=0-FC:2=c9e4ff-FC:3=c9e4ff-HC=2-HO:SW-FF:1=c9e4ff-FB:1=c9e4ff-FL:1=c9e4ff-AT:9=0:8=000000-FC:3=009900-BT=0-FL:A17=f2f2f2|A5=f2f2f2|A9=f2f2f2|A33=f2f2f2|A34=f2f2f2|A6=999999|A10=999999|A18=999999|G1=dddddd|G2=dddddd-FTC:NW=f2f2f2|NE=f2f2f2|A17=999999|SE=f2f2f2|SW=f2f2f2-HO:NW-FF:1=c9e4ff-FB:1=c9e4ff-FL:1=c9e4ff-AT:9=0-FTC:AI33=999999|AM33=999999|AM9=999999-FF:1=c9e4ff-FB:1=c9e4ff-FL:1=c9e4ff-AT:9=0
-        if (!link.contains(HTTP) && !link.contains(HTTPS) && !link.contains(DLL)) {
+        //去除http://charts.edgar-online.com/ext/charts.dll?2...
+        if (!link.contains(HTTP) && !link.contains(HTTPS) && !link.contains(DLL) && !link.contains(BS)) {
             link = HTTP + link;
         }
         //去除http:///wolfman/static/common/images/transparent.gif

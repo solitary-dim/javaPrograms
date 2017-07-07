@@ -75,10 +75,21 @@ public final class CrawlerPages {
                 }
                 //在待请求url过多的情形下，暂定积攒到了1000条后就去请求，并清空待请求url列表
                 if (aUnvisitedUrl.size() > QUEUE_MAX) {
-                    // TODO: 2017/7/7
-//                    new ImageDownload().imageDownload(imgUnvisitedUrl);
-//                    imgVisitedUrl.addAll(imgUnvisitedUrl);
-//                    imgUnvisitedUrl.removeAll(imgUnvisitedUrl);
+                    //预存下一层url，下一层的先暂存数据库，留待本层结束，从数据库重新获取，继续下一层
+                    for (String nextUrl:aUnvisitedUrl) {
+                        id++;
+                        //将通过本次url访问所得页面内容记录下
+                        URLEntity entity = new URLEntity();
+                        entity.setId(startId + id);
+                        entity.setIsUsed(0);
+                        entity.setLevel(level);
+                        entity.setUrl(nextUrl);
+                        entity.setContent(null);
+                        entity.setNotes(NOTES_PAGE);
+                        saveUrlTemp(entity);
+                    }
+                    aVisitedUrl.addAll(aUnvisitedUrl);
+                    aUnvisitedUrl.removeAll(aUnvisitedUrl);
                 }
             }
         }
@@ -112,7 +123,7 @@ public final class CrawlerPages {
     private void beforeCrawler() {
         mySQLHelper = MySQLHelper.getInstance();
         startId = mySQLHelper.getIdStart(config.getMysqlTableName());
-        List<URLEntity> list = mySQLHelper.getVisitedUrl(config.getMysqlTableName(), null);
+        List<URLEntity> list = mySQLHelper.getVisitedUrl(config.getMysqlTableName(), TYPE_NULL);
 
         if (null != list && list.size() > 0) {
             for (URLEntity entity : list) {
@@ -127,7 +138,7 @@ public final class CrawlerPages {
 
         long maxLevel = 0L;
 
-        list = mySQLHelper.getUnvisitedUrl(config.getMysqlTableName(), null);
+        list = mySQLHelper.getUnvisitedUrl(config.getMysqlTableName(), TYPE_NULL);
         if (null != list && list.size() > 0) {
             for (URLEntity entity : list) {
                 if (maxLevel < entity.getLevel()) {
@@ -155,14 +166,15 @@ public final class CrawlerPages {
 
     //将开始url保存到实体类中,并开起爬虫
     private void setUrl(String url) {
-        //将开始的url加入到未访问url中
-        aUnvisitedUrl.add(url);
         URLEntity entity = new URLEntity();
         entity.setId(startId + id);
         entity.setLevel(level);
         entity.setUrl(url);
         entity.setIsUsed(0);
-        entity.setNotes("Page");
+        entity.setNotes(NOTES_PAGE);
+
+        //起始url单独做插入数据库操作
+        mySQLHelper.saveUrl(entity);
 
         //第一层
         List<URLEntity> list = new ArrayList<>();
@@ -170,12 +182,10 @@ public final class CrawlerPages {
         this.doCrawler(list);
     }
 
-    //开始爬虫
+    //开始爬虫，并且只保存当前层已经爬完的url
     private void doCrawler(List<URLEntity> currentLevel) {
-        //每进入下一层，层级加一
+        //每进入一层，层级加一，用来表示下一层
         level++;
-        //记录下一层所有待爬取页面url
-        List<URLEntity> nextLevel = new ArrayList<>();
 
         for (URLEntity entity:currentLevel) {
             //标注本次访问的url为已访问
@@ -183,20 +193,18 @@ public final class CrawlerPages {
 
             //将本次访问url添加到已经访问过url
             aVisitedUrl.add(entity.getUrl());
-            //将本次访问url从未访问过url中移出
-            aUnvisitedUrl.remove(entity.getUrl());
 
             //通过url进行页面访问
             HttpClient httpClient = new HttpClient(entity.getUrl(), config.getTimeout(), config.getTimeout());
             String htmlBody = "";
             try {
-                httpClient.sendData("GET", null);
+                httpClient.sendData(REQUEST_METHOD_GET, null);
                 htmlBody = httpClient.getResult();
                 //LOGGER.info(htmlBody);
             } catch (IOException e) {
                 LOGGER.error("error!", e);
             }
-            //将通过本次url访问所得页面内容记录下
+            //将通过本次url访问所得页面内容记录下，待存入数据库
             if (StringUtils.isNotEmpty(htmlBody)) {
                 entity.setContent(htmlBody);
             }
@@ -204,35 +212,43 @@ public final class CrawlerPages {
 
             //得到本次url所得页面中文档数据
             Document doc = Jsoup.parse(htmlBody);
-
-            //将本次url指向的页面中图片的url保存下来
-            getImgSrc(doc);
-
             //将本次url指向的页面中的url保存下来
             getALink(doc, level);
+            //将本次url指向的页面中图片的url保存下来
+            getImgSrc(doc);
         }
 
+        //在getALink()没有完全保存下所有下一层待访问URL的情况下，这里作为补漏操作
+        if (aUnvisitedUrl.size() > 0) {
+            //预存下一层url，下一层的先暂存数据库，留待本层结束，从数据库重新获取，继续下一层
+            for (String nextUrl:aUnvisitedUrl) {
+                id++;
+                //将通过本次url访问所得页面内容记录下
+                URLEntity entity = new URLEntity();
+                entity.setId(startId + id);
+                entity.setIsUsed(0);
+                entity.setLevel(level);
+                entity.setUrl(nextUrl);
+                entity.setContent(null);
+                entity.setNotes(NOTES_PAGE);
+                saveUrlTemp(entity);
+            }
+            aVisitedUrl.addAll(aUnvisitedUrl);
+            aUnvisitedUrl.removeAll(aUnvisitedUrl);
+        }
+
+        //在getImgSrc()没有完全保存下所有下一层图片的情况下，这里作为补漏操作
         if (imgUnvisitedUrl.size() > 0) {
-            //一层所有url访问结束后，下载本层所有图片，并且移除已经访问过的图片src
             new ImageDownload().imageDownload(imgUnvisitedUrl);
             imgVisitedUrl.addAll(imgUnvisitedUrl);
             imgUnvisitedUrl.removeAll(imgUnvisitedUrl);
         }
 
-        //一层结束后，拿取本层得到的未访问过的url，逐条进行访问
-        for (String link : aUnvisitedUrl) {
-            URLEntity urlEntity = new URLEntity();
-            id++;
-            urlEntity.setId(startId + id);
-            urlEntity.setLevel(level);
-            urlEntity.setUrl(link);
-            urlEntity.setIsUsed(0);
-            urlEntity.setNotes("Page");
-            nextLevel.add(urlEntity);
-        }
-        // TODO: 2017/7/7
+        //从数据库拿取下一层要爬取的url
+        List<URLEntity> nextLevel = mySQLHelper.getUnvisitedUrl(config.getMysqlTableName(), TYPE_PAGE);
+
         //递归，根据新url去爬下一层的新的页面
-        doCrawler(nextLevel);
+        this.doCrawler(nextLevel);
     }
 
     //将数据批量存储数据库前的预处理
@@ -243,7 +259,7 @@ public final class CrawlerPages {
             addList.add(urlEntity);
             index++;
             if (index >= config.getMysqlBatchMax()) {
-                mySQLHelper.saveUrl(addList);
+                mySQLHelper.saveUrlList(addList);
 
                 index = 0;
                 addList.removeAll(addList);

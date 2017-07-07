@@ -2,12 +2,16 @@ package com.omdes.javaPrograms.crawler.helper;
 
 import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
 import com.omdes.javaPrograms.crawler.entity.URLEntity;
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+
+import static com.omdes.javaPrograms.crawler.config.BaseConfig.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -159,10 +163,10 @@ public final class MySQLHelper {
     /**
      * 得到当前表中还未访问过的url
      * @param tableName 表名
-     * @param type a-url；i-src
+     * @param type 0-all; 1-url；2-src
      * @return
      */
-    public List<URLEntity> getUnvisitedUrl(String tableName, String type) {
+    public List<URLEntity> getUnvisitedUrl(String tableName, int type) {
         List<URLEntity> list = new ArrayList<>();
         //判断数据库中是否已经存在了数据
         if (!isEmpty(tableName)) {
@@ -173,14 +177,17 @@ public final class MySQLHelper {
                         append(" WHERE DELETED_FLAG = 0").
                         append(" AND IS_USED = 0");
                 //判断是否针对特定标签查询出未访问过的url，否则查询出所有
-                if (StringUtils.isNotEmpty(type)) {
-                    if ("a".equals(type)) {
+                switch (type) {
+                    case TYPE_PAGE:
                         //仅查询未访问过的a标签的href
                         sql.append(" AND LEVEL > 0;");
-                    } else if ("i".equals(type)) {
+                        break;
+                    case TYPE_IMAGE:
                         //仅查询未访问过的img标签的src
                         sql.append(" AND LEVEL = 0;");
-                    }
+                        break;
+                    default:
+                        break;
                 }
                 this.statement = this.connection.createStatement();
                 this.resultSet = this.statement.executeQuery(sql.toString());
@@ -203,10 +210,10 @@ public final class MySQLHelper {
     /**
      * 得到当前表中已经访问过的url
      * @param tableName 表名
-     * @param type a-url；i-src
+     * @param type 0-all; 1-url；2-src
      * @return
      */
-    public List<URLEntity> getVisitedUrl(String tableName, String type) {
+    public List<URLEntity> getVisitedUrl(String tableName, int type) {
         List<URLEntity> list = new ArrayList<>();
         //判断数据库中是否已经存在了数据
         if (!isEmpty(tableName)) {
@@ -217,14 +224,17 @@ public final class MySQLHelper {
                         append(" WHERE DELETED_FLAG = 0").
                         append(" AND IS_USED = 0");
                 //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
-                if (StringUtils.isNotEmpty(type)) {
-                    if ("a".equals(type)) {
-                        //仅查询已经访问过的a标签的href
+                switch (type) {
+                    case TYPE_PAGE:
+                        //仅查询未访问过的a标签的href
                         sql.append(" AND LEVEL > 0;");
-                    } else if ("i".equals(type)) {
-                        //仅查询已经访问过的img标签的src
+                        break;
+                    case TYPE_IMAGE:
+                        //仅查询未访问过的img标签的src
                         sql.append(" AND LEVEL = 0;");
-                    }
+                        break;
+                    default:
+                        break;
                 }
                 this.statement = this.connection.createStatement();
                 this.resultSet = this.statement.executeQuery(sql.toString());
@@ -245,10 +255,49 @@ public final class MySQLHelper {
     }
 
     /**
+     * 连接数据库，将数据存入数据库
+     * @param entity
+     */
+    public void saveUrl(URLEntity entity) {
+        Date date = new Date();
+        StringBuilder sql = new StringBuilder();
+        sql = sql.append("INSERT INTO T_URL (ID, NAME, STATUS, DELETED_FLAG, CREATED_TIME, ").
+                append("CREATED_USER_ID, UPDATED_TIME, UPDATED_USER_ID, LEVEL, URL, IS_USED, ").
+                append("COUNT, CONTENT, NOTES) VALUES (").append(entity.getId()).append(",").
+                append(entity.getName()).append(",").
+                append(entity.getStatus()).append(",").
+                append(entity.getDeletedFlag()).append(",").
+                append(new Timestamp(date.getTime())).append(",").
+                append(0L).append(",").
+                append(new Timestamp(date.getTime())).append(",").
+                append(0L).append(",").
+                append(entity.getLevel()).append(",").
+                append(entity.getUrl()).append(",").
+                append(entity.getIsUsed()).append(",").
+                append(entity.getCount()).append(",").
+                append(entity.getContent()).append(",").
+                append(entity.getNotes()).append(")");
+
+        this.openConnection();
+        try {
+            Connection connection = this.connection;
+            Statement pstmt= connection.createStatement();
+            int result = pstmt.executeUpdate(sql.toString());
+            LOGGER.info("insert into MySQL result: " + result);
+
+            if (null != pstmt) {
+                pstmt.close();
+            }
+        } catch (SQLException e) {
+            LOGGER.error("SQLException!", e);
+        }
+    }
+
+    /**
      * 连接数据库，将数据批量存入数据库
      * @param list
      */
-    public void saveUrl(List<URLEntity> list) {
+    public void saveUrlList(List<URLEntity> list) {
         String sql = "INSERT INTO T_URL (ID, NAME, STATUS, DELETED_FLAG, CREATED_TIME, " +
                 "CREATED_USER_ID, UPDATED_TIME, UPDATED_USER_ID, LEVEL, URL, IS_USED, " +
                 "COUNT, CONTENT, NOTES) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -259,7 +308,7 @@ public final class MySQLHelper {
             PreparedStatement pstmt = connection.prepareStatement(sql);
             connection.setAutoCommit(false);
             for (URLEntity entity: list) {
-                java.util.Date date = new java.util.Date();
+                Date date = new Date();
                 pstmt.setLong(1, entity.getId());
                 pstmt.setString(2, entity.getName());
                 pstmt.setInt(3, entity.getStatus());
@@ -303,7 +352,7 @@ public final class MySQLHelper {
             PreparedStatement pstmt = connection.prepareStatement(sql);
             connection.setAutoCommit(false);
             for (URLEntity entity: list) {
-                java.util.Date date = new java.util.Date();
+                Date date = new Date();
                 pstmt.setTimestamp(1, new Timestamp(date.getTime()));
                 pstmt.setLong(2, 0L);
                 pstmt.setLong(3, entity.getLevel());

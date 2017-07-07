@@ -12,6 +12,12 @@ public final class BaseConfig {
     public static final String REQUEST_METHOD_POST = "POST";
     public static final String ENCODING = "UTF-8";
 
+    public static final String NOTES_PAGE = "Page";
+    public static final String NOTES_IMAGE = "Image";
+    public static final int TYPE_NULL = 0;
+    public static final int TYPE_PAGE = 1;
+    public static final int TYPE_IMAGE = 2;
+
     //HTTP请求放回状态码
     public static final int HTTP_RESPONSE_CODE_SUCCESS = 200;
 
