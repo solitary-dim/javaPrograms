@@ -143,7 +143,6 @@ public class PictureShow extends JFrame implements ActionListener, Serializable 
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        // TODO Auto-generated method stub
         //浏览
         if (e.getSource() == browse) {
 

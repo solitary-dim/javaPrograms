@@ -15,8 +15,6 @@ public class testFile {
      * file(内存)----输入流---->【程序】----输出流---->file(内存)
      */
     public static void main(String[] args) {
-        // TODO Auto-generated method stub
-
         long begin = System.currentTimeMillis();
         System.out.println("start time: " + begin);
 
@@ -60,7 +58,6 @@ public class testFile {
             try {
                 file.createNewFile();
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
@@ -77,11 +74,9 @@ public class testFile {
                 // boolean success=true;
                 // System.out.println("写入文件成功");
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         } catch (FileNotFoundException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         try {
@@ -93,7 +88,7 @@ public class testFile {
                 System.out.print((char) ch);
             }
         } catch (Exception e) {
-            // TODO: handle exception
+            e.printStackTrace();
         }
     }
 
