@@ -2,6 +2,7 @@ package com.omdes.javaPrograms.crawler.impl;
 
 import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
 import com.omdes.javaPrograms.crawler.entity.URLEntity;
+import com.omdes.javaPrograms.crawler.entity.URLQueryCondition;
 import com.omdes.javaPrograms.crawler.helper.HtmlHelper;
 import com.omdes.javaPrograms.crawler.helper.HttpClient;
 import com.omdes.javaPrograms.crawler.helper.MySQLHelper;
@@ -27,20 +28,27 @@ import static com.omdes.javaPrograms.crawler.config.BaseConfig.*;
 public final class CrawlerPages {
     private static final Logger LOGGER = LoggerFactory.getLogger(CrawlerPages.class);
 
+    //page
     private static Set<String> aUnvisitedUrl = new HashSet<>();
     private static Set<String> aVisitedUrl = new HashSet<>();
+    //image
     private static Set<String> imgUnvisitedUrl = new HashSet<>();
     private static Set<String> imgVisitedUrl = new HashSet<>();
 
-    private static List<URLEntity> addList = new ArrayList<>();;
+    //database operation
+    private static List<URLEntity> addList = new ArrayList<>();
+    private static int addCount = 0;
     private static List<URLEntity> updateList = new ArrayList<>();
+    private static int updateCount = 0;
     private static long id = 1L;
-    //修改递归为每层逐层爬取
+    //修改递归为每层逐层爬取,level表示的是当前层而非下一层
     private static long level = 1L;
-
     private PropertiesConfig config = PropertiesConfig.getInstance();
     private MySQLHelper mySQLHelper;
     private static long startId;
+
+    private static int start = 0;
+
     /**
      * 主方法
      */
@@ -53,12 +61,13 @@ public final class CrawlerPages {
 
     /**
      * 拿取所有a标签的href
+     *
      * @param doc
-     * @param level 这次得到的所有url所在的层次
+     * @param level 这次得到的所有url所在的层次(下一层)
      */
     private void getALink(Document doc, long level) {
         Elements elements = doc.select("a[href]");
-        for (Element element:elements) {
+        for (Element element : elements) {
             String link = element.attr("abs:href").trim();
             if (StringUtils.isNotEmpty(link)) {
                 if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
@@ -72,7 +81,7 @@ public final class CrawlerPages {
                 //在待请求url过多的情形下，暂定积攒到了1000条后就去请求，并清空待请求url列表
                 if (aUnvisitedUrl.size() > QUEUE_MAX) {
                     //预存下一层url，下一层的先暂存数据库，留待本层结束，从数据库重新获取，继续下一层
-                    for (String nextUrl:aUnvisitedUrl) {
+                    for (String nextUrl : aUnvisitedUrl) {
                         id++;
                         //将通过本次url访问所得页面内容记录下
                         URLEntity entity = new URLEntity();
@@ -93,6 +102,7 @@ public final class CrawlerPages {
 
     /**
      * 拿取所有img标签的src
+     *
      * @param doc
      */
     private void getImgSrc(Document doc) {
@@ -119,7 +129,9 @@ public final class CrawlerPages {
     private void beforeCrawler() {
         mySQLHelper = MySQLHelper.getInstance();
         startId = mySQLHelper.getIdStart(config.getMysqlTableName());
-        List<URLEntity> list = mySQLHelper.getVisitedUrl(config.getMysqlTableName(), TYPE_NULL);
+        URLQueryCondition condition = new URLQueryCondition();
+        condition.setTableName(config.getMysqlTableName());
+        List<URLEntity> list = mySQLHelper.getVisitedUrl(condition);
 
         if (null != list && list.size() > 0) {
             for (URLEntity entity : list) {
@@ -132,12 +144,9 @@ public final class CrawlerPages {
             list.removeAll(list);
         }
 
-        long maxLevel = 0L;
-
-        list = mySQLHelper.getUnvisitedUrl(config.getMysqlTableName(), TYPE_NULL);
+        list = mySQLHelper.getUnvisitedUrl(condition);
         if (null != list && list.size() > 0) {
-            level = maxLevel + 1L;
-
+            long maxLevel = 0L;
             for (URLEntity entity : list) {
                 if (maxLevel < entity.getLevel()) {
                     maxLevel = entity.getLevel();
@@ -147,14 +156,18 @@ public final class CrawlerPages {
                 } else {
                     aUnvisitedUrl.add(entity.getUrl());
                 }
-
-                //由未访问url开始爬虫，且所有未曾访问过的url的层级（不问原来高低）全部重置为最底层（比数据库中已有最底一层还要低一层）
+            }
+            //由未访问url开始爬虫，且所有未曾访问过的url的层级（不问原来高低）全部重置为最底层（比数据库中已有最底一层还要低一层）
+            level = maxLevel + 1L;
+            for (URLEntity entity : list) {
                 entity.setLevel(level);
                 this.saveUrlTemp(entity, false, list.size());
             }
 
-            //开始爬虫
-            this.doCrawler(list);
+            /*//开始爬虫
+            this.doCrawler(list);*/
+            //修改成逐层分量爬取
+            this.doCrawlerOnce();
         }
     }
 
@@ -170,10 +183,12 @@ public final class CrawlerPages {
         //起始url单独做插入数据库操作
         mySQLHelper.saveUrl(entity);
 
-        //第一层
+        /*//第一层
         List<URLEntity> list = new ArrayList<>();
         list.add(entity);
-        this.doCrawler(list);
+        this.doCrawler(list);*/
+        //修改成逐层分量爬取
+        this.doCrawlerOnce();
     }
 
     //开始爬虫，并且只更新当前层已经爬完的url
@@ -181,7 +196,7 @@ public final class CrawlerPages {
         //每进入一层，层级加一，用来表示下一层
         level++;
 
-        for (URLEntity entity:currentLevel) {
+        for (URLEntity entity : currentLevel) {
             //标注本次访问的url为已访问
             entity.setIsUsed(1);
 
@@ -200,7 +215,7 @@ public final class CrawlerPages {
             }
             //将通过本次url访问所得页面内容记录下，待存入数据库
             if (StringUtils.isNotEmpty(htmlBody)) {
-                entity.setContent(htmlBody);
+                entity.setContent(HtmlHelper.replaceFourChar(htmlBody));
             }
             //更新本层url为已经访问过
             this.saveUrlTemp(entity, false, currentLevel.size());
@@ -216,7 +231,7 @@ public final class CrawlerPages {
         //在getALink()没有完全保存下所有下一层待访问URL的情况下，这里作为补漏操作
         if (aUnvisitedUrl.size() > 0) {
             //预存下一层url，下一层的先暂存数据库，留待本层结束，从数据库重新获取，继续下一层
-            for (String nextUrl:aUnvisitedUrl) {
+            for (String nextUrl : aUnvisitedUrl) {
                 id++;
                 //将通过本次url访问所得页面内容记录下
                 URLEntity entity = new URLEntity();
@@ -240,36 +255,133 @@ public final class CrawlerPages {
         }
 
         //从数据库拿取下一层要爬取的url
-        List<URLEntity> nextLevel = mySQLHelper.getUnvisitedUrl(config.getMysqlTableName(), TYPE_PAGE);
+        URLQueryCondition condition = new URLQueryCondition();
+        condition.setTableName(config.getMysqlTableName());
+        condition.setLevel(level);
+        List<URLEntity> nextLevel = mySQLHelper.getUnvisitedUrl(condition);
 
         //递归，根据新url去爬下一层的新的页面
         this.doCrawler(nextLevel);
     }
 
     /**
+     * 开始单层分批次爬虫，针对保存在数据库中的未访问的下一层
+     * 隐藏参数 level 下一层层级
+     */
+    private void doCrawlerOnce() {
+        //分批次爬完下一层全部未访问url
+        URLQueryCondition condition = new URLQueryCondition();
+        condition.setTableName(config.getMysqlTableName());
+        condition.setLevel(level);
+        int totalCount = mySQLHelper.getUnvisitedUrlCount(condition);
+        int size = totalCount / QUEUE_MAX + 1;
+        level++;
+        for (int i = 0; i < size; i++) {
+            condition.setPageStart(start);
+            condition.setPageSize(QUEUE_MAX);
+            //从数据库拿取下一层要爬取的url
+            List<URLEntity> nextLevel = mySQLHelper.getUnvisitedUrlPaged(condition);
+            start += QUEUE_MAX;
+
+            //分批次进行下一层未访问url的访问
+            for (URLEntity entity : nextLevel) {
+                //标注本次访问的url为已访问
+                entity.setIsUsed(1);
+
+                //将本次访问url添加到已经访问过url
+                aVisitedUrl.add(entity.getUrl());
+
+                //通过url进行页面访问
+                HttpClient httpClient = new HttpClient(entity.getUrl(), config.getTimeout(), config.getTimeout());
+                String htmlBody = "";
+                try {
+                    httpClient.sendData(REQUEST_METHOD_GET, null);
+                    htmlBody = httpClient.getResult();
+                    //LOGGER.info(htmlBody);
+                } catch (IOException e) {
+                    LOGGER.error("error!", e);
+                }
+                //将通过本次url访问所得页面内容记录下，待存入数据库
+                if (StringUtils.isNotEmpty(htmlBody)) {
+                    entity.setContent(HtmlHelper.replaceFourChar(htmlBody));
+                }
+                //更新下一层本次部分url为已经访问过
+                this.saveUrlTemp(entity, false, nextLevel.size());
+
+                //得到本次url所得页面中文档数据
+                Document doc = Jsoup.parse(htmlBody);
+                //将本次url指向的页面中的url保存下来
+                this.getALink(doc, level);
+                //将本次url指向的页面中图片的url保存下来
+                this.getImgSrc(doc);
+            }
+
+            //在getALink()没有完全保存下所有下一层待访问URL的情况下，这里作为补漏操作
+            if (aUnvisitedUrl.size() > 0) {
+                //预存下一层url，下一层的先暂存数据库，留待本层结束，从数据库重新获取，继续下一层
+                for (String nextUrl : aUnvisitedUrl) {
+                    id++;
+                    //将通过本次url访问所得页面内容记录下
+                    URLEntity entity = new URLEntity();
+                    entity.setId(startId + id);
+                    entity.setIsUsed(0);
+                    entity.setLevel(level);
+                    entity.setUrl(nextUrl);
+                    entity.setContent(null);
+                    entity.setNotes(NOTES_PAGE);
+                    this.saveUrlTemp(entity, true, aUnvisitedUrl.size());
+                }
+                aVisitedUrl.addAll(aUnvisitedUrl);
+                aUnvisitedUrl.removeAll(aUnvisitedUrl);
+            }
+
+            //在getImgSrc()没有完全保存下所有下一层图片的情况下，这里作为补漏操作
+            if (imgUnvisitedUrl.size() > 0) {
+                new ImageDownload().imageDownload(imgUnvisitedUrl);
+                imgVisitedUrl.addAll(imgUnvisitedUrl);
+                imgUnvisitedUrl.removeAll(imgUnvisitedUrl);
+            }
+        }
+        this.doCrawlerOnce();
+    }
+
+    /**
      * 将数据批量存储数据库前的预处理
+     *
      * @param urlEntity
-     * @param flag true-插入操作；false-更新操作
-     * @param max 本次批量操作的list的size值
+     * @param flag      true-插入操作；false-更新操作
+     * @param max       本次批量操作的list的size值
      */
     private void saveUrlTemp(URLEntity urlEntity, boolean flag, int max) {
         int num = max % config.getMysqlBatchMax();
         //判断是否要做插入操作的URL
         if (flag) {
+            addCount++;
             addList.add(urlEntity);
-            if (addList.size() >= num || addList.size() >= config.getMysqlBatchMax()) {
+            if (addList.size() >= config.getMysqlBatchMax()) {
+                LOGGER.info("save data: " + addList.size());
                 mySQLHelper.saveUrlList(addList);
                 addList.removeAll(addList);
+            } else if (addCount >= max && addList.size() >= num) {
+                LOGGER.info("save data: " + addList.size());
+                mySQLHelper.saveUrlList(addList);
+                addList.removeAll(addList);
+                addCount = 0;
             }
-            LOGGER.info("save data into MySQL: " + addList.size());
         } else {
+            updateCount++;
             //将本次实体类添加到更新队列中
             updateList.add(urlEntity);
-            if (updateList.size() >= num || updateList.size() >= config.getMysqlBatchMax()) {
+            if (updateList.size() >= config.getMysqlBatchMax()) {
+                LOGGER.info("update data: " + updateList.size());
                 mySQLHelper.updateUrlList(updateList);
                 updateList.removeAll(updateList);
+            } else if (updateCount >= max && updateList.size() >= num) {
+                LOGGER.info("update data: " + updateList.size());
+                mySQLHelper.updateUrlList(updateList);
+                updateList.removeAll(updateList);
+                updateCount = 0;
             }
-            LOGGER.info("update data successful: " + updateList.size());
         }
     }
 }

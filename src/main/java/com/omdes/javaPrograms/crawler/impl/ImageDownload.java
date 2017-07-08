@@ -6,10 +6,7 @@ import com.omdes.javaPrograms.crawler.helper.MySQLHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -49,11 +46,9 @@ public final class ImageDownload {
         startId = mySQLHelper.getIdStart(config.getMysqlTableName());
         long id = 0L;
 
-        for (String link: links) {
-            //LOGGER.info("img src: " + link);
+        for (String link : links) {
+            LOGGER.info("img src: " + link);
             try {
-                LOGGER.info("img src: " + link);
-
                 URL url = new URL(link);
                 URLConnection conn = url.openConnection();
                 InputStream inStream = conn.getInputStream();
@@ -63,14 +58,22 @@ public final class ImageDownload {
                     //LOGGER.info("img name: " + imgName);
                     FileOutputStream fs = new FileOutputStream(imgFullName);
 
-                    int byteread;
+                    int imgSize = 0;
+                    int byteRead;
                     byte[] buffer = new byte[10240];
-                    while ((byteread = inStream.read(buffer)) != -1) {
-                        fs.write(buffer, 0, byteread);
+                    while ((byteRead = inStream.read(buffer)) != -1) {
+                        imgSize += byteRead;
+                        fs.write(buffer, 0, byteRead);
                     }
                     fs.flush();
                     fs.close();
                     inStream.close();
+
+                    //如果图片过小，则删除，并且不保存src
+                    if (imgSize < 2 * 1024) {
+                        new File(imgFullName).delete();
+                        continue;
+                    }
 
                     //下载图片成功后，将图片src保存到数据库
                     URLEntity imgEntity = new URLEntity();

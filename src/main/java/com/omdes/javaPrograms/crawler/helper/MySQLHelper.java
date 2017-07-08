@@ -2,6 +2,7 @@ package com.omdes.javaPrograms.crawler.helper;
 
 import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
 import com.omdes.javaPrograms.crawler.entity.URLEntity;
+import com.omdes.javaPrograms.crawler.entity.URLQueryCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,8 @@ import static com.omdes.javaPrograms.crawler.config.BaseConfig.*;
 public final class MySQLHelper {
     private static final Logger LOGGER = LoggerFactory.getLogger(MySQLHelper.class);
     private static volatile MySQLHelper mySQLHelper;
+
+    private static final String QUERY_FAILED = "查询失败！";
 
     private Connection connection = null;
     private Statement statement = null;
@@ -44,7 +47,8 @@ public final class MySQLHelper {
         return this.resultSet;
     }
 
-    private MySQLHelper() {}
+    private MySQLHelper() {
+    }
 
     private static PropertiesConfig config;
 
@@ -53,7 +57,7 @@ public final class MySQLHelper {
 
         if (mySQLHelper == null) {
             synchronized (MySQLHelper.class) {
-                if (mySQLHelper == null)        {
+                if (mySQLHelper == null) {
                     mySQLHelper = new MySQLHelper();
                 }
             }
@@ -69,16 +73,14 @@ public final class MySQLHelper {
                 //加载MySql的驱动类
                 Class.forName(config.getMysqlDriverName());
             } catch (ClassNotFoundException e) {
-                System.out.println("找不到驱动程序类 ，加载驱动失败！");
-                e.printStackTrace();
+                LOGGER.error("找不到驱动程序类 ，加载驱动失败！", e);
             }
             try {
                 this.connection = DriverManager.getConnection(config.getMysqlUrl(),
                         config.getMysqlUsername(),
                         config.getMysqlPassword());
             } catch (SQLException e) {
-                System.out.println("数据库连接失败！");
-                e.printStackTrace();
+                LOGGER.error("数据库连接失败！", e);
             }
         }
     }
@@ -89,34 +91,35 @@ public final class MySQLHelper {
             try {
                 this.resultSet.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.error("关闭结果集失败！", e);
             }
         }
-        if (this.statement !=null) {
+        if (this.statement != null) {
             try {
                 this.statement.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.error("关闭Statement失败！", e);
             }
         }
-        if (this.preparedStatement !=null) {
+        if (this.preparedStatement != null) {
             try {
                 this.preparedStatement.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.error("关闭PrepareStatement失败！", e);
             }
         }
         if (this.connection != null) {
             try {
                 this.connection.close();
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.error("关闭数据库连接失败！", e);
             }
         }
     }
 
     /**
      * 判断当前表是否为空
+     *
      * @param tableName 表名
      * @return true-空；false-非空
      */
@@ -130,13 +133,14 @@ public final class MySQLHelper {
                 result = false;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.error(QUERY_FAILED, e);
         }
         return result;
     }
 
     /**
      * 得到当前表中已有数据的最大ID
+     *
      * @param tableName 表名
      * @return long 表中已有最大ID
      */
@@ -148,12 +152,12 @@ public final class MySQLHelper {
             this.openConnection();
             try {
                 this.statement = this.connection.createStatement();
-                this.resultSet = this.statement.executeQuery("SELECT MAX(ID) FROM "+ tableName + ";");
+                this.resultSet = this.statement.executeQuery("SELECT MAX(ID) FROM " + tableName + ";");
                 if (this.resultSet.next()) {
                     id = this.resultSet.getLong(1);
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.error(QUERY_FAILED, e);
             }
         }
 
@@ -161,34 +165,75 @@ public final class MySQLHelper {
     }
 
     /**
-     * 得到当前表中还未访问过的url
-     * @param tableName 表名
-     * @param type 0-all; 1-url；2-src
-     * @return
+     * 得到当前表中还未访问过的url的数量
+     *
+     * @param condition tableName 表名
+     *                  level 待访问url所在层次
+     *                  notes Page-查询所有层次所有代问url；Image-查询图片src
+     * @return int 数量
      */
-    public List<URLEntity> getUnvisitedUrl(String tableName, int type) {
-        List<URLEntity> list = new ArrayList<>();
+    public int getUnvisitedUrlCount(URLQueryCondition condition) {
+        int count = 0;
+
         //判断数据库中是否已经存在了数据
-        if (!isEmpty(tableName)) {
+        if (!isEmpty(condition.getTableName())) {
             this.openConnection();
             try {
-                StringBuilder sql = new StringBuilder("SELECT ID,LEVEL,URL,IS_USED,COUNT FROM ").
-                        append(tableName).
+                StringBuilder sql = new StringBuilder().
+                        append("SELECT COUNT(1) FROM ").
+                        append(condition.getTableName()).
                         append(" WHERE DELETED_FLAG = 0").
                         append(" AND IS_USED = 0");
                 //判断是否针对特定标签查询出未访问过的url，否则查询出所有
-                switch (type) {
-                    case TYPE_PAGE:
-                        //仅查询未访问过的a标签的href
-                        sql.append(" AND LEVEL > 0;");
-                        break;
-                    case TYPE_IMAGE:
-                        //仅查询未访问过的img标签的src
-                        sql.append(" AND LEVEL = 0;");
-                        break;
-                    default:
-                        break;
+                if (null != condition.getLevel() && condition.getLevel() >= 0) {
+                    sql.append(" AND LEVEL = ").append(condition.getLevel());
                 }
+                //根据notes中记录的类型决定是单查询图片src还是页面url
+                if (null != condition.getNotes()) {
+                    sql.append(" AND LEVEL = '").append(condition.getNotes()).append("'");
+                }
+                sql.append(";");
+                this.statement = this.connection.createStatement();
+                this.resultSet = this.statement.executeQuery(sql.toString());
+                if (this.resultSet.next()) {
+                    count = this.resultSet.getInt(1);
+                }
+            } catch (SQLException e) {
+                LOGGER.error(QUERY_FAILED, e);
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * 得到当前表中还未访问过的url
+     *
+     * @param condition tableName 表名
+     *                  level 待访问url所在层次
+     *                  notes Page-查询所有层次所有代问url；Image-查询图片src
+     * @return
+     */
+    public List<URLEntity> getUnvisitedUrl(URLQueryCondition condition) {
+        List<URLEntity> list = new ArrayList<>();
+        //判断数据库中是否已经存在了数据
+        if (!isEmpty(condition.getTableName())) {
+            this.openConnection();
+            try {
+                StringBuilder sql = new StringBuilder().
+                        append("SELECT ID,LEVEL,URL,IS_USED,COUNT,CONTENT,NOTES FROM ").
+                        append(condition.getTableName()).
+                        append(" WHERE DELETED_FLAG = 0").
+                        append(" AND IS_USED = 0");
+                //判断是否针对特定标签查询出未访问过的url，否则查询出所有
+                if (null != condition.getLevel() && condition.getLevel() >= 0) {
+                    sql.append(" AND LEVEL = ").append(condition.getLevel());
+                }
+                //根据notes中记录的类型决定是单查询图片src还是页面url
+                if (null != condition.getNotes()) {
+                    sql.append(" AND LEVEL = '").append(condition.getNotes()).append("'");
+                }
+                sql.append(";");
                 this.statement = this.connection.createStatement();
                 this.resultSet = this.statement.executeQuery(sql.toString());
                 while (this.resultSet.next()) {
@@ -198,44 +243,47 @@ public final class MySQLHelper {
                     entity.setUrl(resultSet.getString(3));
                     entity.setIsUsed(resultSet.getInt(4));
                     entity.setCount(resultSet.getInt(5));
+                    entity.setContent(resultSet.getString(6));
+                    entity.setNotes(resultSet.getString(7));
                     list.add(entity);
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.error(QUERY_FAILED, e);
             }
         }
         return list;
     }
 
     /**
-     * 得到当前表中已经访问过的url
-     * @param tableName 表名
-     * @param type 0-all; 1-url；2-src
+     * 分页查询得到当前表中还未访问过的url
+     *
+     * @param condition tableName 表名
+     *                  notes Page-查询所有层次所有代问url；Image-查询图片src
+     *                  level 待访问url所在层次
+     *                  pageStart 每次分页查询的起始
+     *                  pageSize 每次分页查询数量
      * @return
      */
-    public List<URLEntity> getVisitedUrl(String tableName, int type) {
+    public List<URLEntity> getUnvisitedUrlPaged(URLQueryCondition condition) {
         List<URLEntity> list = new ArrayList<>();
         //判断数据库中是否已经存在了数据
-        if (!isEmpty(tableName)) {
+        if (!isEmpty(condition.getTableName())) {
             this.openConnection();
             try {
-                StringBuilder sql = new StringBuilder("SELECT ID,LEVEL,URL,IS_USED,COUNT FROM ").
-                        append(tableName).
+                StringBuilder sql = new StringBuilder().
+                        append("SELECT ID,LEVEL,URL,IS_USED,COUNT,CONTENT,NOTES FROM ").
+                        append(condition.getTableName()).
                         append(" WHERE DELETED_FLAG = 0").
                         append(" AND IS_USED = 0");
-                //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
-                switch (type) {
-                    case TYPE_PAGE:
-                        //仅查询未访问过的a标签的href
-                        sql.append(" AND LEVEL > 0;");
-                        break;
-                    case TYPE_IMAGE:
-                        //仅查询未访问过的img标签的src
-                        sql.append(" AND LEVEL = 0;");
-                        break;
-                    default:
-                        break;
+                //判断是否针对特定标签查询出未访问过的url，否则查询出所有
+                if (null != condition.getLevel() && condition.getLevel() >= 0) {
+                    sql.append(" AND LEVEL = ").append(condition.getLevel());
                 }
+                //根据notes中记录的类型决定是单查询图片src还是页面url
+                if (null != condition.getNotes()) {
+                    sql.append(" AND LEVEL = '").append(condition.getNotes()).append("'");
+                }
+                sql.append(" LIMIT ").append(condition.getPageStart()).append(COMMA).append(condition.getPageSize());
                 this.statement = this.connection.createStatement();
                 this.resultSet = this.statement.executeQuery(sql.toString());
                 while (this.resultSet.next()) {
@@ -245,10 +293,151 @@ public final class MySQLHelper {
                     entity.setUrl(resultSet.getString(3));
                     entity.setIsUsed(resultSet.getInt(4));
                     entity.setCount(resultSet.getInt(5));
+                    entity.setContent(resultSet.getString(6));
+                    entity.setNotes(resultSet.getString(7));
                     list.add(entity);
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.error(QUERY_FAILED, e);
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 得到当前表中已经访问过的url的数量
+     *
+     * @param condition tableName 表名
+     *                  level 待访问url所在层次
+     *                  notes Page-查询所有层次所有代问url；Image-查询图片src
+     * @return int 数量
+     */
+    public int getVisitedUrlCount(URLQueryCondition condition) {
+        int count = 0;
+
+        //判断数据库中是否已经存在了数据
+        if (!isEmpty(condition.getTableName())) {
+            this.openConnection();
+            try {
+                StringBuilder sql = new StringBuilder().
+                        append("SELECT COUNT(1) FROM ").
+                        append(condition.getTableName()).
+                        append(" WHERE DELETED_FLAG = 0").
+                        append(" AND IS_USED = 1");
+                //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
+                if (null != condition.getLevel() && condition.getLevel() >= 0) {
+                    sql.append(" AND LEVEL = ").append(condition.getLevel());
+                }
+                //根据notes中记录的类型决定是单查询图片src还是页面url
+                if (null != condition.getNotes()) {
+                    sql.append(" AND LEVEL = '").append(condition.getNotes()).append("'");
+                }
+                sql.append(";");
+                this.statement = this.connection.createStatement();
+                this.resultSet = this.statement.executeQuery(sql.toString());
+                if (this.resultSet.next()) {
+                    count = this.resultSet.getInt(1);
+                }
+            } catch (SQLException e) {
+                LOGGER.error(QUERY_FAILED, e);
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 得到当前表中已经访问过的url
+     *
+     * @param condition tableName 表名
+     *                  level 待访问url所在层次
+     *                  notes Page-查询所有层次所有代问url；Image-查询图片src
+     * @return
+     */
+    public List<URLEntity> getVisitedUrl(URLQueryCondition condition) {
+        List<URLEntity> list = new ArrayList<>();
+        //判断数据库中是否已经存在了数据
+        if (!isEmpty(condition.getTableName())) {
+            this.openConnection();
+            try {
+                StringBuilder sql = new StringBuilder().
+                        append("SELECT ID,LEVEL,URL,IS_USED,COUNT,CONTENT,NOTES FROM ").
+                        append(condition.getTableName()).
+                        append(" WHERE DELETED_FLAG = 0").
+                        append(" AND IS_USED = 1");
+                //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
+                if (null != condition.getLevel() && condition.getLevel() >= 0) {
+                    sql.append(" AND LEVEL = ").append(condition.getLevel());
+                }
+                //根据notes中记录的类型决定是单查询图片src还是页面url
+                if (null != condition.getNotes()) {
+                    sql.append(" AND LEVEL = '").append(condition.getNotes()).append("'");
+                }
+                sql.append(";");
+                this.statement = this.connection.createStatement();
+                this.resultSet = this.statement.executeQuery(sql.toString());
+                while (this.resultSet.next()) {
+                    URLEntity entity = new URLEntity();
+                    entity.setId(resultSet.getLong(1));
+                    entity.setLevel(resultSet.getLong(2));
+                    entity.setUrl(resultSet.getString(3));
+                    entity.setIsUsed(resultSet.getInt(4));
+                    entity.setCount(resultSet.getInt(5));
+                    entity.setContent(resultSet.getString(6));
+                    entity.setNotes(resultSet.getString(7));
+                    list.add(entity);
+                }
+            } catch (SQLException e) {
+                LOGGER.error(QUERY_FAILED, e);
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 分页查询得到当前表中已经访问过的url
+     *
+     * @param condition tableName 表名
+     *                  notes Page-查询所有层次所有代问url；Image-查询图片src
+     *                  level 待访问url所在层次
+     *                  pageStart 每次分页查询的起始
+     *                  pageSize 每次分页查询数量
+     * @return
+     */
+    public List<URLEntity> getVisitedUrlPaged(URLQueryCondition condition) {
+        List<URLEntity> list = new ArrayList<>();
+        //判断数据库中是否已经存在了数据
+        if (!isEmpty(condition.getTableName())) {
+            this.openConnection();
+            try {
+                StringBuilder sql = new StringBuilder().
+                        append("SELECT ID,LEVEL,URL,IS_USED,COUNT,CONTENT,NOTES FROM ").
+                        append(condition.getTableName()).
+                        append(" WHERE DELETED_FLAG = 0").
+                        append(" AND IS_USED = 1");
+                //判断是否针对特定标签查询出已经访问过的url，否则查询出所有
+                if (null != condition.getLevel() && condition.getLevel() >= 0) {
+                    sql.append(" AND LEVEL = ").append(condition.getLevel());
+                }
+                //根据notes中记录的类型决定是单查询图片src还是页面url
+                if (null != condition.getNotes()) {
+                    sql.append(" AND LEVEL = '").append(condition.getNotes()).append("'");
+                }
+                sql.append(" LIMIT ").append(condition.getPageStart()).append(COMMA).append(condition.getPageSize());
+                this.statement = this.connection.createStatement();
+                this.resultSet = this.statement.executeQuery(sql.toString());
+                while (this.resultSet.next()) {
+                    URLEntity entity = new URLEntity();
+                    entity.setId(resultSet.getLong(1));
+                    entity.setLevel(resultSet.getLong(2));
+                    entity.setUrl(resultSet.getString(3));
+                    entity.setIsUsed(resultSet.getInt(4));
+                    entity.setCount(resultSet.getInt(5));
+                    entity.setContent(resultSet.getString(6));
+                    entity.setNotes(resultSet.getString(7));
+                    list.add(entity);
+                }
+            } catch (SQLException e) {
+                LOGGER.error(QUERY_FAILED, e);
             }
         }
         return list;
@@ -256,32 +445,33 @@ public final class MySQLHelper {
 
     /**
      * 连接数据库，将数据存入数据库
+     *
      * @param entity
      */
     public void saveUrl(URLEntity entity) {
         Date date = new Date();
-        StringBuilder sql = new StringBuilder();
-        sql = sql.append("INSERT INTO T_URL (ID, NAME, STATUS, DELETED_FLAG, CREATED_TIME, ").
+        StringBuilder sql = new StringBuilder().
+                append("INSERT INTO T_URL (ID, NAME, STATUS, DELETED_FLAG, CREATED_TIME, ").
                 append("CREATED_USER_ID, UPDATED_TIME, UPDATED_USER_ID, LEVEL, URL, IS_USED, ").
-                append("COUNT, CONTENT, NOTES) VALUES (").append(entity.getId()).append(",").
+                append("COUNT, CONTENT, NOTES) VALUES (").append(entity.getId()).append(COMMA).
                 append("'").append(entity.getName()).append("',").
-                append(entity.getStatus()).append(",").
-                append(entity.getDeletedFlag()).append(",").
+                append(entity.getStatus()).append(COMMA).
+                append(entity.getDeletedFlag()).append(COMMA).
                 append("'").append(new Timestamp(date.getTime())).append("',").
-                append(0L).append(",").
+                append(0L).append(COMMA).
                 append("'").append(new Timestamp(date.getTime())).append("',").
-                append(0L).append(",").
-                append(entity.getLevel()).append(",").
+                append(0L).append(COMMA).
+                append(entity.getLevel()).append(COMMA).
                 append("'").append(entity.getUrl()).append("',").
-                append(entity.getIsUsed()).append(",").
-                append(entity.getCount()).append(",").
+                append(entity.getIsUsed()).append(COMMA).
+                append(entity.getCount()).append(COMMA).
                 append("'").append(entity.getContent()).append("',").
                 append("'").append(entity.getNotes()).append("')");
 
         this.openConnection();
         try {
             Connection connection = this.connection;
-            Statement pstmt= connection.createStatement();
+            Statement pstmt = connection.createStatement();
             int result = pstmt.executeUpdate(sql.toString());
             LOGGER.info("insert into MySQL result: " + result);
 
@@ -289,12 +479,13 @@ public final class MySQLHelper {
                 pstmt.close();
             }
         } catch (SQLException e) {
-            LOGGER.error("SQLException!", e);
+            LOGGER.error("单条插入失败!", e);
         }
     }
 
     /**
      * 连接数据库，将数据批量存入数据库
+     *
      * @param list
      */
     public void saveUrlList(List<URLEntity> list) {
@@ -307,7 +498,7 @@ public final class MySQLHelper {
             Connection connection = this.connection;
             PreparedStatement pstmt = connection.prepareStatement(sql);
             connection.setAutoCommit(false);
-            for (URLEntity entity: list) {
+            for (URLEntity entity : list) {
                 Date date = new Date();
                 pstmt.setLong(1, entity.getId());
                 pstmt.setString(2, entity.getName());
@@ -334,23 +525,24 @@ public final class MySQLHelper {
                 pstmt.close();
             }
         } catch (SQLException e) {
-            LOGGER.error("SQLException!", e);
+            LOGGER.error("批量插入!", e);
         }
     }
 
     /**
      * 连接数据库，将数据存入数据库
+     *
      * @param entity
      */
     public void updateUrl(URLEntity entity) {
         Date date = new Date();
-        StringBuilder sql = new StringBuilder();
-        sql = sql.append("UPDATE T_URL SET ").
+        StringBuilder sql = new StringBuilder().
+                append("UPDATE T_URL SET ").
                 append("UPDATED_TIME = '").append(new Timestamp(date.getTime())).append("',").
-                append("UPDATED_USER_ID = ").append(0L).append(",").
-                append("LEVEL = ").append(entity.getLevel()).append(",").
-                append("IS_USED = ,").append(entity.getIsUsed()).append(",").
-                append("COUNT = ").append(entity.getCount()).append(",").
+                append("UPDATED_USER_ID = ").append(0L).append(COMMA).
+                append("LEVEL = ").append(entity.getLevel()).append(COMMA).
+                append("IS_USED = ,").append(entity.getIsUsed()).append(COMMA).
+                append("COUNT = ").append(entity.getCount()).append(COMMA).
                 append("CONTENT = '").append(entity.getContent()).append("',").
                 append("NOTES = '").append(entity.getNotes()).append("'").
                 append("WHERE ID = ").append(entity.getId());
@@ -358,7 +550,7 @@ public final class MySQLHelper {
         this.openConnection();
         try {
             Connection connection = this.connection;
-            Statement pstmt= connection.createStatement();
+            Statement pstmt = connection.createStatement();
             int result = pstmt.executeUpdate(sql.toString());
             LOGGER.info("update data result: " + result);
 
@@ -366,12 +558,13 @@ public final class MySQLHelper {
                 pstmt.close();
             }
         } catch (SQLException e) {
-            LOGGER.error("SQLException!", e);
+            LOGGER.error("单条更新失败!", e);
         }
     }
 
     /**
      * 连接数据库，将数据批量存入数据库
+     *
      * @param list
      */
     public void updateUrlList(List<URLEntity> list) {
@@ -383,7 +576,7 @@ public final class MySQLHelper {
             Connection connection = this.connection;
             PreparedStatement pstmt = connection.prepareStatement(sql);
             connection.setAutoCommit(false);
-            for (URLEntity entity: list) {
+            for (URLEntity entity : list) {
                 Date date = new Date();
                 pstmt.setTimestamp(1, new Timestamp(date.getTime()));
                 pstmt.setLong(2, 0L);
@@ -402,12 +595,13 @@ public final class MySQLHelper {
                 pstmt.close();
             }
         } catch (SQLException e) {
-            LOGGER.error("SQLException!", e);
+            LOGGER.error("批量更新失败!", e);
         }
     }
 
     /**
      * 连接数据库，将黑名单批量存入数据库
+     *
      * @param blackList
      */
     public void saveBlackList(Set<String> blackList) {
@@ -419,7 +613,7 @@ public final class MySQLHelper {
             Connection connection = this.connection;
             PreparedStatement pstmt = connection.prepareStatement(sql);
             connection.setAutoCommit(false);
-            for (String str: blackList) {
+            for (String str : blackList) {
                 pstmt.setLong(1, id);
                 pstmt.setString(2, str);
                 pstmt.setInt(3, 1);
@@ -433,7 +627,7 @@ public final class MySQLHelper {
                 pstmt.close();
             }
         } catch (SQLException e) {
-            LOGGER.error("SQLException!", e);
+            LOGGER.error("批量更新失败!", e);
         }
     }
 }
