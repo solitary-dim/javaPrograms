@@ -47,8 +47,6 @@ public final class CrawlerPages {
     private MySQLHelper mySQLHelper;
     private static long startId;
 
-    private static int start = 0;
-
     /**
      * 主方法
      */
@@ -274,8 +272,15 @@ public final class CrawlerPages {
         condition.setTableName(config.getMysqlTableName());
         condition.setLevel(level);
         int totalCount = mySQLHelper.getUnvisitedUrlCount(condition);
+
+        //如果totalCount为0，表示没有带访问下一层url，终止爬虫
+        if (totalCount == 0) {
+            LOGGER.info("crawler is over!");
+            return;
+        }
         int size = totalCount / QUEUE_MAX + 1;
         level++;
+        int start = 0;
         for (int i = 0; i < size; i++) {
             condition.setPageStart(start);
             condition.setPageSize(QUEUE_MAX);

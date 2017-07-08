@@ -1,6 +1,8 @@
 package com.omdes.javaPrograms.crawler.config;
 
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.Properties;
@@ -14,6 +16,8 @@ import static com.omdes.javaPrograms.crawler.config.BaseConfig.ENCODING;
  * Time: 18:53
  */
 public final class PropertiesConfig {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PropertiesConfig.class);
+
     private static volatile PropertiesConfig propertiesConfig;
 
     private PropertiesConfig() {}
@@ -122,74 +126,74 @@ public final class PropertiesConfig {
 
     public void loadProperties(Properties pro) {
         String value = null;
-        System.out.println("配置项：");
+        LOGGER.info("配置项：");
 
         value = pro.getProperty(IMAGE_PATH);
         if (StringUtils.isNotEmpty(value)) {
             this.imagePath = value.trim();
-            System.out.println("图片下载路径==>" + IMAGE_PATH + "==>" + value);
+            LOGGER.info("图片下载路径==>" + IMAGE_PATH + "==>" + value);
         }
 
         value = pro.getProperty(CONNECT_TIMEOUT);
         if (StringUtils.isNotEmpty(value)) {
             this.timeout = Integer.parseInt(value.trim());
-            System.out.println("HTTP连接超时时间==>" + CONNECT_TIMEOUT + "==>" + value);
+            LOGGER.info("HTTP连接超时时间==>" + CONNECT_TIMEOUT + "==>" + value);
         }
 
         value = pro.getProperty(PROXY_USE);
         if (StringUtils.isNotEmpty(value)) {
             this.proxyUse = "true".equals(value.trim());
-            System.out.println("是否使用代理服务器==>" + PROXY_USE + "==>" + value);
+            LOGGER.info("是否使用代理服务器==>" + PROXY_USE + "==>" + value);
         }
 
         value = pro.getProperty(PROXY_HOST);
         if (StringUtils.isNotEmpty(value)) {
             this.proxyHost = value.trim();
-            System.out.println("代理服务器地址==>" + PROXY_HOST + "==>" + value);
+            LOGGER.info("代理服务器地址==>" + PROXY_HOST + "==>" + value);
         }
 
         value = pro.getProperty(PROXY_PORT);
         if (StringUtils.isNotEmpty(value)) {
             this.proxyPort = value.trim();
-            System.out.println("代理服务器端口==>" + PROXY_PORT + "==>" + value);
+            LOGGER.info("代理服务器端口==>" + PROXY_PORT + "==>" + value);
         }
 
         value = pro.getProperty(MYSQL_DRIVER_NAME);
         if (StringUtils.isNotEmpty(value)) {
             this.mysqlDriverName = value.trim();
-            System.out.println("数据库驱动名称==>" + MYSQL_DRIVER_NAME + "==>" + value);
+            LOGGER.info("数据库驱动名称==>" + MYSQL_DRIVER_NAME + "==>" + value);
         }
 
         value = pro.getProperty(MYSQL_URL);
         if (StringUtils.isNotEmpty(value)) {
             this.mysqlUrl = value.trim();
-            System.out.println("数据库地址==>" + MYSQL_URL + "==>" + value);
+            LOGGER.info("数据库地址==>" + MYSQL_URL + "==>" + value);
         }
 
         value = pro.getProperty(MYSQL_USERNAME);
         if (StringUtils.isNotEmpty(value)) {
             this.mysqlUsername = value.trim();
-            System.out.println("数据库用户名==>" + MYSQL_USERNAME + "==>" + value);
+            LOGGER.info("数据库用户名==>" + MYSQL_USERNAME + "==>" + value);
         }
 
         value = pro.getProperty(MYSQL_PASSWORD);
         if (StringUtils.isNotEmpty(value)) {
             this.mysqlPassword = value.trim();
-            System.out.println("数据库密码==>" + MYSQL_PASSWORD + "==>" + value);
+            LOGGER.info("数据库密码==>" + MYSQL_PASSWORD + "==>" + value);
         }
 
         value = pro.getProperty(MYSQL_BATCH_MAX);
         if (StringUtils.isNotEmpty(value)) {
             this.mysqlBatchMax = Integer.parseInt(value.trim());
-            System.out.println("批量操作数==>" + MYSQL_BATCH_MAX + "==>" + value);
+            LOGGER.info("批量操作数==>" + MYSQL_BATCH_MAX + "==>" + value);
         }
 
         value = pro.getProperty(MYSQL_TABLE_NAME);
         if (StringUtils.isNotEmpty(value)) {
             this.mysqlTableName = value.trim();
-            System.out.println("操作表名==>" + MYSQL_TABLE_NAME + "==>" + value);
+            LOGGER.info("操作表名==>" + MYSQL_TABLE_NAME + "==>" + value);
         }
-        System.out.println("已加载");
+        LOGGER.info("已加载");
     }
 
     public void loadPropertiesFromPath(String rootPath) {
@@ -205,23 +209,23 @@ public final class PropertiesConfig {
                     loadProperties(properties);
                     bf.close();
                 } catch (UnsupportedEncodingException e) {
-                    System.out.println("UnsupportedEncodingException!" + e);
+                    LOGGER.error("UnsupportedEncodingException!", e);
                 } catch (FileNotFoundException e) {
-                    System.out.println("FileNotFoundException!" + e);
+                    LOGGER.error("FileNotFoundException!", e);
                 } catch (IOException e) {
-                    System.out.println("IOException!" + e);
+                    LOGGER.error("IOException!", e);
                 } finally {
                     if (null != in) {
                         try {
                             in.close();
                         } catch (IOException e) {
-                            System.out.println("IOException!" + e);
+                            LOGGER.error("IOException!", e);
                         }
                     }
                 }
             } else {
                 //由于此时可能还没有完成LOG的加载，因此采用标准输出来打印日志信息
-                System.out.println(rootPath + FILE_NAME + "不存在,加载参数失败");
+                LOGGER.info(rootPath + FILE_NAME + "不存在,加载参数失败");
             }
         } else {
             loadPropertiesFromSrc();
@@ -242,18 +246,18 @@ public final class PropertiesConfig {
                 loadProperties(properties);
                 bf.close();
             } catch (UnsupportedEncodingException e) {
-                System.out.println("UnsupportedEncodingException!" + e);
+                LOGGER.error("UnsupportedEncodingException!", e);
             } catch (IOException e) {
-                System.out.println("IOException!" + e);
+                LOGGER.error("IOException!", e);
             } finally {
                 try {
                     in.close();
                 } catch (IOException e) {
-                    System.out.println("IOException!" + e);
+                    LOGGER.error("IOException!", e);
                 }
             }
         } else {
-            System.out.println(FILE_NAME + "属性文件未能找到!");
+            LOGGER.info(FILE_NAME + "属性文件未能找到!");
         }
     }
 }
