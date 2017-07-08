@@ -64,6 +64,7 @@ public final class CrawlerPages {
                 if (link.lastIndexOf(LEFT_SLASH) == (link.length() - 1)) {
                     link = link.substring(0, link.length() - 1);
                 }
+                link = HtmlHelper.replaceFourChar(link);
                 //判断是否是已经访问过的url
                 if (!aVisitedUrl.contains(link)) {
                     aUnvisitedUrl.add(link);
@@ -259,16 +260,16 @@ public final class CrawlerPages {
             if (addList.size() >= num || addList.size() >= config.getMysqlBatchMax()) {
                 mySQLHelper.saveUrlList(addList);
                 addList.removeAll(addList);
-                LOGGER.info("save data into MySQL");
             }
+            LOGGER.info("save data into MySQL: " + addList.size());
         } else {
             //将本次实体类添加到更新队列中
             updateList.add(urlEntity);
             if (updateList.size() >= num || updateList.size() >= config.getMysqlBatchMax()) {
                 mySQLHelper.updateUrlList(updateList);
                 updateList.removeAll(updateList);
-                LOGGER.info("update data successful");
             }
+            LOGGER.info("update data successful: " + updateList.size());
         }
     }
 }

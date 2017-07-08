@@ -99,7 +99,7 @@ public final class ImageDownload {
 
         //save src to database
         mySQLHelper.saveUrlList(list);
-        LOGGER.info("save images' src into MySQL");
+        LOGGER.info("save images' src into MySQL: " + list.size());
         list.removeAll(list);
 
         //save blacklist to database
