@@ -1,6 +1,7 @@
 package com.omdes.javaPrograms.crawler.impl;
 
 import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
+import com.omdes.javaPrograms.crawler.entity.BlackEntity;
 import com.omdes.javaPrograms.crawler.entity.URLEntity;
 import com.omdes.javaPrograms.crawler.helper.MySQLHelper;
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ public final class ImageDownload {
         }
 
         final List<URLEntity> list = new ArrayList<>();
-        startId = mySQLHelper.getIdStart(config.getMysqlTableName());
+        startId = mySQLHelper.getIdStart(config.getUrlTableName());
         long id = 0L;
 
         for (String link : links) {
@@ -93,9 +94,8 @@ public final class ImageDownload {
                 LOGGER.error("FileNotFoundException!", e);
             } catch (IOException e) {
                 //添加到黑名单
-                link = link.substring(link.indexOf("//"), link.length());
-                link = link.substring(0, link.indexOf("/"));
-                blackList.add(link);
+                link = link.substring(link.indexOf(DOUBLE_LEFT_SLASH) + 2);
+                blackList.add(link.substring(0, link.indexOf(LEFT_SLASH)));
                 LOGGER.error("IOException!", e);
             }
         }
@@ -107,7 +107,19 @@ public final class ImageDownload {
 
         //save blacklist to database
         if (blackList.size() > 0) {
-            mySQLHelper.saveBlackList(blackList);
+            long beginId = mySQLHelper.getIdStart(config.getBlackTableName());
+            int index = 0;
+            List<BlackEntity> blackEntities = new ArrayList<>();
+            for (String name : blackList) {
+                index++;
+                BlackEntity entity = new BlackEntity();
+                entity.setId(beginId + index);
+                entity.setName(name);
+                entity.setCount(1);
+                entity.setNotes(NOTES_IMAGE);
+                blackEntities.add(entity);
+            }
+            mySQLHelper.saveBlackList(blackEntities);
             blackList.removeAll(blackList);
         }
     }

@@ -22,4 +22,5 @@ public final class BaseConfig {
 
     public static final String COMMA = ",";
     public static final char LEFT_SLASH = '/';
+    public static final String DOUBLE_LEFT_SLASH = "//";
 }

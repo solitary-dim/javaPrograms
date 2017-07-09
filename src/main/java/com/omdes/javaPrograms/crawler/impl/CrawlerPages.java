@@ -80,10 +80,12 @@ public final class CrawlerPages {
                 if (aUnvisitedUrl.size() > QUEUE_MAX) {
                     //预存下一层url，下一层的先暂存数据库，留待本层结束，从数据库重新获取，继续下一层
                     for (String nextUrl : aUnvisitedUrl) {
+                        String temp = link.substring(link.indexOf(DOUBLE_LEFT_SLASH) + 2);
                         id++;
                         //将通过本次url访问所得页面内容记录下
                         URLEntity entity = new URLEntity();
                         entity.setId(startId + id);
+                        entity.setName(temp.substring(0, temp.indexOf(LEFT_SLASH)));
                         entity.setIsUsed(0);
                         entity.setLevel(level);
                         entity.setUrl(nextUrl);
@@ -126,9 +128,9 @@ public final class CrawlerPages {
     //在本次开始爬虫前，先对数据库中保存的上次未完成的url继续操作
     private void beforeCrawler() {
         mySQLHelper = MySQLHelper.getInstance();
-        startId = mySQLHelper.getIdStart(config.getMysqlTableName());
+        startId = mySQLHelper.getIdStart(config.getUrlTableName());
         URLQueryCondition condition = new URLQueryCondition();
-        condition.setTableName(config.getMysqlTableName());
+        condition.setTableName(config.getUrlTableName());
         List<URLEntity> list = mySQLHelper.getVisitedUrl(condition);
 
         if (null != list && list.size() > 0) {
@@ -254,7 +256,7 @@ public final class CrawlerPages {
 
         //从数据库拿取下一层要爬取的url
         URLQueryCondition condition = new URLQueryCondition();
-        condition.setTableName(config.getMysqlTableName());
+        condition.setTableName(config.getUrlTableName());
         condition.setLevel(level);
         List<URLEntity> nextLevel = mySQLHelper.getUnvisitedUrl(condition);
 
@@ -269,7 +271,7 @@ public final class CrawlerPages {
     private void doCrawlerOnce() {
         //分批次爬完下一层全部未访问url
         URLQueryCondition condition = new URLQueryCondition();
-        condition.setTableName(config.getMysqlTableName());
+        condition.setTableName(config.getUrlTableName());
         condition.setLevel(level);
         int totalCount = mySQLHelper.getUnvisitedUrlCount(condition);
 

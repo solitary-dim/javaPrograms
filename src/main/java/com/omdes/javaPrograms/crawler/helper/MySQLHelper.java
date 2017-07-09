@@ -1,6 +1,7 @@
 package com.omdes.javaPrograms.crawler.helper;
 
 import com.omdes.javaPrograms.crawler.config.PropertiesConfig;
+import com.omdes.javaPrograms.crawler.entity.BlackEntity;
 import com.omdes.javaPrograms.crawler.entity.URLEntity;
 import com.omdes.javaPrograms.crawler.entity.URLQueryCondition;
 import org.slf4j.Logger;
@@ -10,7 +11,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 
 import static com.omdes.javaPrograms.crawler.config.BaseConfig.*;
 
@@ -604,20 +604,18 @@ public final class MySQLHelper {
      *
      * @param blackList
      */
-    public void saveBlackList(Set<String> blackList) {
-        long id = mySQLHelper.getIdStart("T_BLACKLIST");
-
+    public void saveBlackList(List<BlackEntity> blackList) {
         String sql = "INSERT INTO T_BLACKLIST (ID, NAME, COUNT, NOTES) VALUES (?,?,?,?)";
 
         try {
             Connection connection = this.connection;
             PreparedStatement pstmt = connection.prepareStatement(sql);
             connection.setAutoCommit(false);
-            for (String str : blackList) {
-                pstmt.setLong(1, id);
-                pstmt.setString(2, str);
-                pstmt.setInt(3, 1);
-                pstmt.setString(4, "");
+            for (BlackEntity entity : blackList) {
+                pstmt.setLong(1, entity.getId());
+                pstmt.setString(2, entity.getName());
+                pstmt.setInt(3, entity.getCount());
+                pstmt.setString(4, entity.getNotes());
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
@@ -627,7 +625,7 @@ public final class MySQLHelper {
                 pstmt.close();
             }
         } catch (SQLException e) {
-            LOGGER.error("批量更新失败!", e);
+            LOGGER.error("批量插入失败!", e);
         }
     }
 }

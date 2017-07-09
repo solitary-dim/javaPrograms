@@ -73,8 +73,11 @@ public final class PropertiesConfig {
     private static final String MYSQL_BATCH_MAX = "mysql.jdbc.batch.max";
     private int mysqlBatchMax;
 
-    private static final String MYSQL_TABLE_NAME = "mysql.jdbc.table.name";
-    private String mysqlTableName;
+    private static final String MYSQL_TABLE_URL_NAME = "mysql.jdbc.table.url.name";
+    private String urlTableName;
+
+    private static final String MYSQL_TABLE_BLACK_NAME = "mysql.jdbc.table.black.name";
+    private String blackTableName;
 
     public Properties getProperties() {
         return properties;
@@ -120,8 +123,12 @@ public final class PropertiesConfig {
         return mysqlBatchMax;
     }
 
-    public String getMysqlTableName() {
-        return mysqlTableName;
+    public String getUrlTableName() {
+        return urlTableName;
+    }
+
+    public String getBlackTableName() {
+        return blackTableName;
     }
 
     public void loadProperties(Properties pro) {
@@ -188,10 +195,14 @@ public final class PropertiesConfig {
             LOGGER.info("批量操作数==>" + MYSQL_BATCH_MAX + "==>" + value);
         }
 
-        value = pro.getProperty(MYSQL_TABLE_NAME);
+        value = pro.getProperty(MYSQL_TABLE_URL_NAME);
         if (StringUtils.isNotEmpty(value)) {
-            this.mysqlTableName = value.trim();
-            LOGGER.info("操作表名==>" + MYSQL_TABLE_NAME + "==>" + value);
+            this.urlTableName = value.trim();
+        }
+
+        value = pro.getProperty(MYSQL_TABLE_BLACK_NAME);
+        if (StringUtils.isNotEmpty(value)) {
+            this.blackTableName = value.trim();
         }
         LOGGER.info("已加载");
     }

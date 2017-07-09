@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.UnsupportedEncodingException;
 
 import static com.omdes.javaPrograms.crawler.config.BaseConfig.ENCODING;
+import static com.omdes.javaPrograms.crawler.config.BaseConfig.DOUBLE_LEFT_SLASH;
 
 /**
  * Created with IntelliJ IDEA.
@@ -21,7 +22,6 @@ public final class HtmlHelper {
     private static final String LEFT_SLASH = "/";
     private static final String AND_STRING = "&";
     private static final String QUESTION_MARK_STRING = "?";
-    private static final String DOUBLE_LEFT_SLASH = "//";
     private static final String HTTP = "http:";
     private static final String HTTPS = "https:";
     private static final String PHP = ".php";
