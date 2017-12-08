@@ -209,7 +209,7 @@ public final class CrawlerPages {
             try {
                 httpClient.sendData(REQUEST_METHOD_GET, null);
                 htmlBody = httpClient.getResult();
-                //LOGGER.info(htmlBody);
+                //LOGGER.info("html body data: \n" + htmlBody);
             } catch (IOException e) {
                 LOGGER.error("error!", e);
             }
@@ -275,7 +275,7 @@ public final class CrawlerPages {
         condition.setLevel(level);
         int totalCount = mySQLHelper.getUnvisitedUrlCount(condition);
 
-        //如果totalCount为0，表示没有带访问下一层url，终止爬虫
+        //如果totalCount为0，表示没有待访问下一层url，终止爬虫
         if (totalCount == 0) {
             LOGGER.info("crawler is over!");
             return;
@@ -306,7 +306,7 @@ public final class CrawlerPages {
                     htmlBody = httpClient.getResult();
                     //LOGGER.info(htmlBody);
                 } catch (IOException e) {
-                    LOGGER.error("error!", e);
+                    //LOGGER.error("visit url failed!\n", e);
                 }
                 //将通过本次url访问所得页面内容记录下，待存入数据库
                 if (StringUtils.isNotEmpty(htmlBody)) {

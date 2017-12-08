@@ -40,16 +40,21 @@ import com.omdes.javaPrograms.crawler.impl.CrawlerPages;
  *          不见满街漂亮妹，哪个归得程序员？
  *
  */
-public final class Main {
+public final class MainRun {
 
     protected static PropertiesConfig config = PropertiesConfig.getInstance();
 
-    public static void main(String[] args) {
+    public static void runCrawler(String url) {
+        //加载配置文件中配置
         config.loadPropertiesFromSrc();
 
+        //启动时间监控线程
+        new TimerMonitor("TimeMonitor").start();
+
+        //开启爬虫
         //new CrawlerPages().crawlerFromUrl("http://www.hao123.com");
         //new CrawlerPages().crawlerFromUrl("http://image.baidu.com");
-        new CrawlerPages().crawlerFromUrl("http://image.baidu.com/search/index?tn=baiduimage&ipn=r&ct=201326592&cl=2&lm=-1&st=-1&sf=2&fmq=1480332039000_R_D&pv=&ic=0&nc=1&z=&se=&showtab=0&fb=0&width=&height=&face=0&istype=2&ie=utf-8&word=%E5%BE%AE%E8%B7%9D%E6%91%84%E5%BD%B1");
-
+        //new CrawlerPages().crawlerFromUrl("http://image.baidu.com/search/index?tn=baiduimage&ipn=r&ct=201326592&cl=2&lm=-1&st=-1&sf=2&fmq=1480332039000_R_D&pv=&ic=0&nc=1&z=&se=&showtab=0&fb=0&width=&height=&face=0&istype=2&ie=utf-8&word=%E5%BE%AE%E8%B7%9D%E6%91%84%E5%BD%B1");
+        new CrawlerPages().crawlerFromUrl(url);
     }
 }

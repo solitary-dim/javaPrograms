@@ -74,7 +74,7 @@ public final class HttpClient {
      */
     private HttpURLConnection createConnection(String method) {
         if (config.isProxyUse()) {
-            LOGGER.info("使用代理服务器进行访问！");
+            LOGGER.info("使用代理服务器进行访问(" + url + ")！");
             // 使用代理服务器进行连接的情况 设置系统变量
             System.setProperty("http.proxySet", "true");
             System.setProperty("http.proxyHost", config.getProxyHost());
@@ -201,7 +201,6 @@ public final class HttpClient {
     }
 
 
-    //test
     public int sendData(String method, String data) throws IOException {
         HttpURLConnection httpURLConnection = createConnection(method);
         httpURLConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=" + BaseConfig.ENCODING);

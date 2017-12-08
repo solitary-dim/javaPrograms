@@ -99,13 +99,16 @@ public final class ImageDownload {
                 LOGGER.error("IOException!", e);
             }
         }
-
         //save src to database
         mySQLHelper.saveUrlList(list);
         LOGGER.info("save images' src into MySQL: " + list.size());
         list.removeAll(list);
 
-        //save blacklist to database
+        saveBlackList();
+    }
+
+    //save blacklist to database
+    private void saveBlackList() {
         if (blackList.size() > 0) {
             long beginId = mySQLHelper.getIdStart(config.getBlackTableName());
             int index = 0;

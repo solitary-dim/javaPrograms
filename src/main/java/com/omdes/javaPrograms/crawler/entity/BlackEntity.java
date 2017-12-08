@@ -7,6 +7,8 @@ import java.io.Serializable;
  * User: Solitary.Wang
  * Date: 2017/7/8
  * Time: 17:56
+ *
+ * 已经访问过的url
  */
 public final class BlackEntity implements Serializable {
     private static final long serialVersionUID = 6656681835446113124L;

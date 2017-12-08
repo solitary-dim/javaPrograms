@@ -76,8 +76,15 @@ public final class PropertiesConfig {
     private static final String MYSQL_TABLE_URL_NAME = "mysql.jdbc.table.url.name";
     private String urlTableName;
 
+    private static final String MYSQL_TABLE_IMAGE_NAME = "mysql.jdbc.table.image.name";
+    private String imageTableName;
+
     private static final String MYSQL_TABLE_BLACK_NAME = "mysql.jdbc.table.black.name";
     private String blackTableName;
+
+    public void setImagePath(String path) {
+        this.imagePath = path;
+    }
 
     public Properties getProperties() {
         return properties;
@@ -127,12 +134,16 @@ public final class PropertiesConfig {
         return urlTableName;
     }
 
+    public String getImageTableName() {
+        return imageTableName;
+    }
+
     public String getBlackTableName() {
         return blackTableName;
     }
 
     public void loadProperties(Properties pro) {
-        String value = null;
+        String value;
         LOGGER.info("配置项：");
 
         value = pro.getProperty(IMAGE_PATH);
@@ -198,6 +209,11 @@ public final class PropertiesConfig {
         value = pro.getProperty(MYSQL_TABLE_URL_NAME);
         if (StringUtils.isNotEmpty(value)) {
             this.urlTableName = value.trim();
+        }
+
+        value = pro.getProperty(MYSQL_TABLE_IMAGE_NAME);
+        if (StringUtils.isNotEmpty(value)) {
+            this.imageTableName = value.trim();
         }
 
         value = pro.getProperty(MYSQL_TABLE_BLACK_NAME);

@@ -10,7 +10,7 @@ import javax.swing.WindowConstants;
  * Time: 8:11
  */
 public class BaseFrame extends JFrame {
-    private final JFrame jFrame = new JFrame();
+    public final JFrame jFrame = new JFrame();
 
     public BaseFrame() {
         this.jFrame.setVisible(true);
